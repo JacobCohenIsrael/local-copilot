@@ -23,12 +23,13 @@ export async function request(host: string | undefined, route: string, body?: un
   return response.json();
 }
 
-export async function generate({ host, model, messages, schema }: GenerateOptions): Promise<unknown> {
+export async function generate({ host, model, messages, schema, keepCache = false }: GenerateOptions): Promise<unknown> {
   if (!model || /(?:cloud|:latest-cloud)$/i.test(model)) throw new Error('Choose an installed local model with --model. Cloud models are unsupported.');
   const info = await request(host, '/api/show', { model });
   if (!isRecord(info)) throw new Error('Ollama returned invalid model information.');
   if (info.remote_host || info.remote_model) throw new Error('This model delegates to a remote service. Choose a local model.');
-  const result = await request(host, '/api/chat', { model, messages, stream: false, format: schema, options: { temperature: 0.1, num_ctx: 16384 } });
+  // Retain for repeated requests only when requested; always expire after idle time.
+  const result = await request(host, '/api/chat', { model, messages, stream: false, keep_alive: keepCache ? '5m' : 0, format: schema, options: { temperature: 0.1, num_ctx: 16384 } });
   if (isRecord(result) && result.done_reason === 'length') throw new Error('Model output was truncated; try a smaller request.');
   let output: unknown;
   try {

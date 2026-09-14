@@ -23,6 +23,7 @@ Options:
   --model NAME Installed local model; also LOCAL_COPILOT_MODEL
   --line N     Insert before this 1-based line (default: append)
   --staged     Review staged changes instead of unstaged tracked changes
+  --keep-cache Keep the model loaded for 5 minutes after each response
   --json       Print machine-readable JSON
   --help       Show this help
 
@@ -37,12 +38,13 @@ try {
     repo: { type: 'string' }, host: { type: 'string' }, model: { type: 'string' },
     file: { type: 'string' }, task: { type: 'string' }, line: { type: 'string' },
     staged: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean' },
+    'keep-cache': { type: 'boolean' },
   } });
   const command = positionals[0];
   if (values.help || !command) console.log(help);
   else {
     if (positionals.length !== 1 || !['doctor', 'suggest', 'review'].includes(command)) throw new Error('Expected doctor, suggest, or review. Use --help.');
-    const options = { ...values, root: await realpath(values.repo || '.'), host: localEndpoint(values.host), model: values.model || process.env.LOCAL_COPILOT_MODEL };
+    const options = { ...values, keepCache: values['keep-cache'] ?? false, root: await realpath(values.repo || '.'), host: localEndpoint(values.host), model: values.model || process.env.LOCAL_COPILOT_MODEL };
     let result: CommandResult;
     if (command === 'doctor') {
       const data = await request(options.host, '/api/tags', undefined, 5000);

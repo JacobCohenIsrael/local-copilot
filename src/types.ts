@@ -13,6 +13,7 @@ export interface ChangedLine extends SourceContext {
 export interface ModelOptions {
   host?: string;
   model?: string;
+  keepCache?: boolean;
 }
 
 export interface CopilotOptions extends ModelOptions {

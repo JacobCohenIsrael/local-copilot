@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { suggest, review } from '../src/copilot.js';
 import { readSource, relatedContext, diffLocations } from '../src/context.js';
 import { localEndpoint } from '../src/model.js';
+import { ideSuggest } from '../src/ide.js';
 import type { ChatMessage } from '../src/types.js';
 
 async function fixture(t: TestContext) {
@@ -32,7 +33,7 @@ async function fixture(t: TestContext) {
 
 interface RecordedCall {
   url: string | undefined;
-  body: { stream?: boolean; messages: ChatMessage[] } | null;
+  body: { stream?: boolean; keep_alive?: number | string; messages: ChatMessage[] } | null;
 }
 
 async function model(t: TestContext, answer: unknown) {
@@ -65,6 +66,7 @@ test('suggest sends cursor split and project context without modifying the file'
   const prompt = service.calls.find(c => c.url === '/api/chat')?.body;
   assert.ok(prompt);
   assert.equal(prompt.stream, false);
+  assert.equal(prompt.keep_alive, 0);
   assert.match(prompt.messages[1].content, /Division by zero must throw/);
   assert.match(prompt.messages[1].content, /"before":"export function divide/);
   await assert.rejects(suggest({ root, ...service, file: 'math.js', task: 'x', line: 0 }), /--line/);
@@ -78,6 +80,7 @@ test('reviews unstaged and staged changes and rejects invented locations', async
   const output = await review({ root, ...service });
   assert.deepEqual(output.findings, [finding]);
   assert.deepEqual(output.reviewedFiles, ['math.js']);
+  assert.equal(service.calls.find(c => c.url === '/api/chat')?.body?.keep_alive, 0);
   git('add', 'math.js');
   assert.equal((await review({ root, ...service })).findings.length, 0);
   assert.equal((await review({ root, ...service, staged: true })).findings.length, 1);
@@ -108,6 +111,56 @@ test('deleted lines use old-side locations', () => {
   assert.equal(locations.has('/dev/null:new'), false);
 });
 
+test('IDE suggestions use unsaved snapshots and exact UTF-16 selection offsets', async t => {
+  const { root } = await fixture(t);
+  const service = await model(t, { explanation: 'Replace expression.', code: 'a / b' });
+  const text = '// 😀 unsaved\nreturn a * b;';
+  const start = text.indexOf('a * b');
+  const input = { version: 1, root, host: service.host, model: service.model, task: 'Fix division',
+    target: { file: 'math.js', text, start, end: start + 5 },
+    context: [{ file: 'README.md', text: 'Unsaved instructions about arithmetic.' }] };
+  const result = await ideSuggest(input);
+  assert.equal(result.start, start);
+  assert.equal(result.end, start + 5);
+  assert.equal(service.calls.find(c => c.url === '/api/chat')?.body?.keep_alive, '5m');
+  await ideSuggest({ ...input, keepCache: false });
+  assert.equal(service.calls.filter(c => c.url === '/api/chat').at(-1)?.body?.keep_alive, 0);
+  await assert.rejects(ideSuggest({ ...input, keepCache: 'false' }), /Invalid IDE request/);
+  const prompt = service.calls.find(c => c.url === '/api/chat')!.body!.messages[1].content;
+  assert.match(prompt, /"selected":"a \* b"/);
+  assert.match(prompt, /Unsaved instructions about arithmetic/);
+  assert.match(prompt, /😀 unsaved/);
+  assert.doesNotMatch(prompt, /Division by zero must throw/);
+  assert.match(await readSource(root, 'math.js'), /export function divide/);
+  await assert.rejects(ideSuggest({ ...input, target: { ...input.target, end: text.length + 1 } }), /offsets/);
+  await assert.rejects(ideSuggest({ ...input, context: [{ file: '../outside.js', text: '' }] }));
+  await writeFile(path.join(root, '.env'), 'secret');
+  await assert.rejects(ideSuggest({ ...input, context: [{ file: '.env', text: 'unsaved secret' }] }), /Excluded/);
+  await assert.rejects(ideSuggest({ ...input, context: [{ file: 'README.md', text: 'x'.repeat(20001) }] }), /20,000/);
+  await assert.rejects(ideSuggest({ ...input, target: { ...input.target, text: 'x'.repeat(30001) } }), /30,000/);
+});
+
+test('IDE bridge transports JSON over stdin and reports malformed requests', async t => {
+  const { root } = await fixture(t);
+  const service = await model(t, { explanation: 'Insert guard.', code: 'guard();' });
+  const script = fileURLToPath(new URL('../src/ide-cli.js', import.meta.url));
+  const run = (body: string) => new Promise<{ code: number | null; out: string; err: string }>((resolve, reject) => {
+    const child = spawn(process.execPath, [script], { windowsHide: true });
+    let out = '', err = '';
+    child.stdout.on('data', x => out += x); child.stderr.on('data', x => err += x);
+    child.on('error', reject); child.on('close', code => resolve({ code, out, err }));
+    child.stdin.end(body);
+  });
+  const input = { version: 1, root, host: service.host, model: 'test', task: 'Add guard',
+    target: { file: 'math.js', text: 'unsaved();', start: 0, end: 0 }, context: [] };
+  const result = await run(JSON.stringify(input));
+  assert.equal(result.code, 0, result.err);
+  assert.equal(JSON.parse(result.out).code, 'guard();');
+  const invalid = await run('{');
+  assert.equal(invalid.code, 1);
+  assert.equal(typeof JSON.parse(invalid.err).error, 'string');
+});
+
 test('CLI works end to end against a local API and reports errors', async t => {
   const { root } = await fixture(t);
   const service = await model(t, { explanation: 'Add a guard.', code: '  if (!b) throw new Error("zero");' });
@@ -123,6 +176,10 @@ test('CLI works end to end against a local API and reports errors', async t => {
   const result = await run(['suggest', '--repo', root, '--file', 'math.js', '--task', 'guard zero', '--line', '2', '--host', service.host, '--model', 'test', '--json']);
   assert.equal(result.code, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).line, 2);
+  assert.equal(service.calls.filter(c => c.url === '/api/chat').at(-1)?.body?.keep_alive, 0);
+  const cached = await run(['suggest', '--repo', root, '--file', 'math.js', '--task', 'guard zero', '--host', service.host, '--model', 'test', '--keep-cache', '--json']);
+  assert.equal(cached.code, 0, cached.stderr);
+  assert.equal(service.calls.filter(c => c.url === '/api/chat').at(-1)?.body?.keep_alive, '5m');
   const doctor = await run(['doctor', '--host', service.host, '--model', 'test', '--json']);
   assert.equal(doctor.code, 0, doctor.stderr);
   assert.deepEqual(JSON.parse(doctor.stdout).models, ['test:latest']);
