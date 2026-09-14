@@ -29,7 +29,7 @@ npm test
 
 `npm ci` installs the exact dependencies from `package-lock.json`. TypeScript and Node.js types are development dependencies; the compiled CLI has no runtime package dependencies. Keep development dependencies installed to build and test. The build writes JavaScript and source maps to `dist/`.
 
-All five tests should pass. They use a local API stub and temporary Git repositories, so they do not require Ollama or model downloads.
+All seven tests should pass. They use a local API stub and temporary Git repositories, so they do not require Ollama or model downloads.
 
 ### 3. Install and start the local model (Windows)
 
@@ -57,6 +57,10 @@ npm run demo
 `doctor` should report an available service and list `qwen2.5-coder:7b`. The demo creates a disposable repository under `.runtime`, requests a division-by-zero guard, introduces a multiplication bug, and reviews it. Expect a code insertion and a finding at `math.js:2` recommending division. Outputs and timings are saved in the demo's `results.json`. It exits with an error if the review misses the changed line.
 
 The copilot is ready to use on your repository. `npm start -- <command>` builds automatically. For JSON output without npm's banners, use `node dist/src/cli.js <command> --json` after building.
+
+## JetBrains plugin (WebStorm and Rider 2026)
+
+An initial plugin reuses this backend for suggestions from selected code, unsaved editor text, open files you attach, and explicit file lists. Responses can be reviewed and applied as undoable edits, with a stale-document check. See [plugin build, installation, and usage](jetbrains-plugin/README.md). Compilation was validated against WebStorm 2026.2.1; interactive IDE testing and Rider compatibility verification remain outstanding. Automatic inline completions are not included.
 
 ## Use on your code
 
@@ -114,6 +118,7 @@ LOCAL_COPILOT_HOST=http://127.0.0.1:11434 npm run demo
 ## Restarting, updating, and troubleshooting
 
 - **After reboot:** rerun the portable setup script; existing runtime and model downloads are reused.
+- **GPU memory after tasks:** CLI and demo requests unload the model after each response by default. Add `--keep-cache` to CLI suggestions or reviews to keep it loaded for five minutes after each response, reducing reload latency. The IDE defaults to caching, with a **Keep model cached (5 minutes idle)** checkbox to disable it. Caching expires after five minutes without another request; it does not pin the model indefinitely. The service and downloaded files remain available. `npm test` uses a stub and never loads or unloads a real model. Other applications or clients sharing Ollama may affect memory usage.
 - **Stop the portable service:** run `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\stop-local-model.ps1`. Logs and the service PID are in `.runtime`.
 - **After pulling updates:** run `npm ci` and `npm run build` again.
 - **Cannot reach the service:** start Ollama, check `.runtime/ollama.stderr.log` for portable setup, and confirm port 11435 versus 11434.

@@ -1,0 +1,12 @@
+<idea-plugin>
+  <id>dev.localcopilot.jetbrains</id>
+  <name>Local Copilot</name>
+  <version>0.1.1</version>
+  <vendor>Local Copilot</vendor>
+  <description>Local code suggestions using selected code and explicitly attached editor snapshots, powered by the Local Copilot Node.js backend and Ollama.</description>
+  <idea-version since-build="261" until-build="262.*"/>
+  <depends>com.intellij.modules.platform</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="Local Copilot" anchor="right" factoryClass="dev.localcopilot.CopilotToolWindowFactory"/>
+  </extensions>
+</idea-plugin>

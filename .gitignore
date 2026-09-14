@@ -4,6 +4,8 @@ dist/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+jetbrains-plugin/build/
+jetbrains-plugin/.gradle/
 
 # Downloaded runtimes, model weights, demo repositories, and caches
 .runtime/
