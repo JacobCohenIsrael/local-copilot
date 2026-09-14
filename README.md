@@ -29,7 +29,7 @@ npm test
 
 `npm ci` installs the exact dependencies from `package-lock.json`. TypeScript and Node.js types are development dependencies; the compiled CLI has no runtime package dependencies. Keep development dependencies installed to build and test. The build writes JavaScript and source maps to `dist/`.
 
-All seven tests should pass. They use a local API stub and temporary Git repositories, so they do not require Ollama or model downloads.
+All tests should pass. They use a local API stub and temporary Git repositories, so they do not require Ollama or model downloads.
 
 ### 3. Install and start the local model (Windows)
 
@@ -60,7 +60,7 @@ The copilot is ready to use on your repository. `npm start -- <command>` builds 
 
 ## JetBrains plugin (WebStorm and Rider 2026)
 
-An initial plugin reuses this backend for suggestions from selected code, unsaved editor text, open files you attach, and explicit file lists. Responses can be reviewed and applied as undoable edits, with a stale-document check. See [plugin build, installation, and usage](jetbrains-plugin/README.md). Compilation was validated against WebStorm 2026.2.1; interactive IDE testing and Rider compatibility verification remain outstanding. Automatic inline completions are not included.
+The plugin reuses this backend for chat, requested code suggestions, and automatic code completion in the editor's completion popup. Choose separate models for chat/suggestions and autocomplete. Requested replacements can be reviewed and applied as undoable edits, with a stale-document check. See [plugin build, installation, and usage](jetbrains-plugin/README.md). Compilation was validated against WebStorm 2026.2.1; interactive IDE testing and Rider compatibility verification remain outstanding.
 
 ## Use on your code
 
@@ -72,7 +72,17 @@ Run from the local-copilot directory, replacing repository and file paths with y
 npm start -- suggest --repo C:\path\to\your-repo --file src/math.ts --line 2 --task "Add a division-by-zero guard" --host http://127.0.0.1:11435 --model qwen2.5-coder:7b
 ```
 
-The suggestion is code to **insert before** the specified 1-based line, plus an explanation. The file must exist, and its path is relative to `--repo`. Omitting `--line` appends at the end. Inspect the result and copy the desired code into your editor. This version provides requested suggestions, without inline editor completions or automatic refactoring.
+The suggestion is code to **insert before** the specified 1-based line, plus an explanation. The file must exist, and its path is relative to `--repo`. Omitting `--line` appends at the end. Inspect the result and copy the desired code into your editor.
+
+### Chat
+
+```powershell
+npm start -- chat --host http://127.0.0.1:11435 --model qwen2.5-coder:7b --keep-cache
+npm start -- chat --message "Explain async/await with an example" --host http://127.0.0.1:11435 --model qwen2.5-coder:7b
+node dist/src/cli.js chat --message "Explain a closure" --host http://127.0.0.1:11435 --model qwen2.5-coder:7b --json
+```
+
+Without `--message`, chat accepts one message per line and remembers previous turns for this session. `/clear` resets history; `/exit` or EOF exits. Piped input is supported. `--json` requires `--message` and returns `{ "message": "..." }`. Chat sends only conversation messages; it does not read repository files. History is limited to 30,000 characters and 20 user turns; start a new conversation when full. Failed requests are not added to history. `--keep-cache` avoids reloading the model between turns.
 
 ### Review changes
 

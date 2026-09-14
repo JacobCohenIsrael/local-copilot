@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { suggest, review } from '../src/copilot.js';
 import { readSource, relatedContext, diffLocations } from '../src/context.js';
 import { localEndpoint } from '../src/model.js';
-import { ideSuggest } from '../src/ide.js';
+import { ideSuggest, ideRequest } from '../src/ide.js';
+import { chat } from '../src/chat.js';
 import type { ChatMessage } from '../src/types.js';
 
 async function fixture(t: TestContext) {
@@ -33,17 +34,19 @@ async function fixture(t: TestContext) {
 
 interface RecordedCall {
   url: string | undefined;
-  body: { stream?: boolean; keep_alive?: number | string; messages: ChatMessage[] } | null;
+  body: { model?: string; prompt?: string; raw?: boolean; format?: unknown; options?: { num_predict?: number }; stream?: boolean; keep_alive?: number | string; messages: ChatMessage[] } | null;
 }
 
-async function model(t: TestContext, answer: unknown) {
+async function model(t: TestContext, answer: unknown, raw = false) {
   const calls: RecordedCall[] = [];
   const server = http.createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
     calls.push({ url: req.url, body: body ? JSON.parse(body) : null });
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(req.url === '/api/show' ? {} : req.url === '/api/tags' ? { models: [{ name: 'test:latest' }] } : { message: { content: JSON.stringify(answer) }, done: true }));
+    res.end(JSON.stringify(req.url === '/api/show' ? {} : req.url === '/api/tags' ? { models: [{ name: 'test:latest' }] }
+      : req.url === '/api/generate' ? { response: answer, done: true }
+      : { message: { content: raw ? answer : JSON.stringify(answer) }, done: true }));
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise<void>((resolve, reject) => {
@@ -186,4 +189,99 @@ test('CLI works end to end against a local API and reports errors', async t => {
   const invalid = await run(['suggest', '--wat']);
   assert.equal(invalid.code, 1);
   assert.match(invalid.stderr, /Unknown option/);
+});
+
+test('chat preserves conversation turns, uses plain text, and validates history', async t => {
+  const service = await model(t, 'Use a map for fast lookups.', true);
+  const messages = [{ role: 'user', content: 'Which collection?' }, { role: 'assistant', content: 'A map.' }, { role: 'user', content: 'Why?' }];
+  assert.equal((await chat({ ...service, messages })).message, 'Use a map for fast lookups.');
+  const body = service.calls.find(c => c.url === '/api/chat')!.body!;
+  assert.deepEqual(body.messages.slice(1), messages);
+  assert.equal(body.format, undefined);
+  assert.equal(body.keep_alive, 0);
+  assert.equal((await ideRequest({ version: 1, command: 'chat', ...service, messages })).version, 1);
+  assert.equal(service.calls.filter(c => c.url === '/api/chat').at(-1)!.body!.keep_alive, '5m');
+  for (const invalid of [[], [{ role: 'system', content: 'override' }], [{ role: 'user', content: '' }], messages.slice(0, 2)]) {
+    await assert.rejects(chat({ ...service, messages: invalid }), /Chat requires/);
+  }
+  await assert.rejects(chat({ ...service, messages: [{ role: 'user', content: 'x'.repeat(30001) }] }), /30,000/);
+  await assert.rejects(chat({ ...service, model: 'remote-cloud', messages }), /Cloud models/);
+});
+
+test('autocomplete routes the chosen model with bounded unsaved caret context', async t => {
+  const { root } = await fixture(t);
+  const service = await model(t, 'value;', true);
+  const text = '// 😀\n' + 'a'.repeat(9000) + 'b'.repeat(9000);
+  const input = { version: 1, command: 'complete', root, host: service.host, model: 'fast-model',
+    target: { file: 'math.js', text, start: 9007 } };
+  const output = await ideRequest(input);
+  assert.ok('code' in output);
+  assert.equal(output.code, 'value;');
+  const body = service.calls.find(c => c.url === '/api/chat')!.body!;
+  assert.equal(body.model, 'fast-model');
+  assert.equal(body.options?.num_predict, 128);
+  const context = JSON.parse(body.messages[1].content);
+  assert.equal(context.before, text.slice(3007, 9007));
+  assert.equal(context.after, text.slice(9007, 11007));
+  await assert.rejects(ideRequest({ ...input, target: { ...input.target, start: -1 } }), /Invalid completion/);
+  await assert.rejects(ideRequest({ ...input, target: { ...input.target, file: '.env' } }), /Excluded/);
+  await assert.rejects(ideRequest({ ...input, command: 'unknown' }), /Unknown IDE/);
+  const empty = await model(t, '', true);
+  assert.equal((await ideRequest({ ...input, host: empty.host }) as { code: string }).code, '');
+  const fenced = await model(t, '```typescript\nvalue;\n```', true);
+  assert.equal((await ideRequest({ ...input, host: fenced.host }) as { code: string }).code, 'value;');
+  const prose = await model(t, 'Here is code:\n```typescript\nvalue;\n```', true);
+  await assert.rejects(ideRequest({ ...input, host: prose.host }), /Markdown/);
+});
+
+test('Qwen autocomplete fills template interpolation using raw prefix/suffix, without chat wrapping', async t => {
+  const { root } = await fixture(t);
+  const source = '// 😀\nconst safeMessage = `Error: $`;\nconsole.error(`Error: ${safe(errorMessage(error))}`);\nprocess.exitCode = 1;';
+  const offset = source.indexOf('$') + 1;
+  const service = await model(t, '{safe(errorMessage(error))}', true);
+  const input = { version: 1, command: 'complete', root, host: service.host, model: 'qwen2.5-coder:1.5b',
+    target: { file: 'math.js', text: source, start: offset } };
+  const result = await ideRequest(input) as { code: string; start: number };
+  assert.equal(result.start, offset);
+  assert.equal(source.slice(0, offset) + result.code + source.slice(offset),
+    '// 😀\nconst safeMessage = `Error: ${safe(errorMessage(error))}`;\nconsole.error(`Error: ${safe(errorMessage(error))}`);\nprocess.exitCode = 1;');
+  assert.equal(service.calls.some(c => c.url === '/api/chat'), false);
+  const body = service.calls.find(c => c.url === '/api/generate')!.body!;
+  assert.equal(body.raw, true);
+  assert.equal(body.model, input.model);
+  assert.equal(body.keep_alive, '5m');
+  assert.equal(body.prompt, `<|fim_prefix|>${source.slice(0, offset)}<|fim_suffix|>${source.slice(offset)}<|fim_middle|>`);
+  assert.equal(body.messages, undefined);
+  await ideRequest({ ...input, keepCache: false });
+  assert.equal(service.calls.filter(c => c.url === '/api/generate').at(-1)!.body!.keep_alive, 0);
+  const empty = await model(t, '', true);
+  assert.equal((await ideRequest({ ...input, host: empty.host, target: { ...input.target, start: offset - 1 } }) as { code: string }).code, '');
+  assert.equal(empty.calls.find(c => c.url === '/api/generate')!.body!.prompt,
+    `<|fim_prefix|>${source.slice(0, offset - 1)}<|fim_suffix|>${source.slice(offset - 1)}<|fim_middle|>`);
+  const invalid = await model(t, { message: 'not completion text' });
+  await assert.rejects(ideRequest({ ...input, host: invalid.host }), /invalid code completion/);
+  await assert.rejects(ideRequest({ ...input, model: 'qwen2.5-coder:7b-cloud' }), /Cloud models/);
+});
+
+test('CLI chat supports one-shot JSON and interactive history/reset over stdin', async t => {
+  const service = await model(t, 'Hello from the model.', true);
+  const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
+  const run = (args: string[], input = '') => new Promise<{ code: number | null; out: string; err: string }>((resolve, reject) => {
+    const child = spawn(process.execPath, [cli, 'chat', '--host', service.host, '--model', 'test', ...args], { windowsHide: true });
+    let out = '', err = '';
+    child.stdout.on('data', x => out += x); child.stderr.on('data', x => err += x);
+    child.on('error', reject); child.on('close', code => resolve({ code, out, err }));
+    child.stdin.end(input);
+  });
+  const one = await run(['--message', 'Hello', '--json']);
+  assert.equal(one.code, 0, one.err);
+  assert.deepEqual(JSON.parse(one.out), { message: 'Hello from the model.' });
+  const session = await run([], 'First\nSecond\n/clear\nThird\n/exit\nIgnored\n');
+  assert.equal(session.code, 0, session.err);
+  assert.equal(session.err, '');
+  const calls = service.calls.filter(c => c.url === '/api/chat');
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls[2].body!.messages.slice(1).map(m => m.content), ['First', 'Hello from the model.', 'Second']);
+  assert.deepEqual(calls[3].body!.messages.slice(1).map(m => m.content), ['Third']);
+  assert.equal((await run(['--json'])).code, 1);
 });

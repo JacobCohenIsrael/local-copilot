@@ -1,12 +1,14 @@
 <idea-plugin>
   <id>dev.localcopilot.jetbrains</id>
   <name>Local Copilot</name>
-  <version>0.1.1</version>
+  <version>0.2.2</version>
   <vendor>Local Copilot</vendor>
-  <description>Local code suggestions using selected code and explicitly attached editor snapshots, powered by the Local Copilot Node.js backend and Ollama.</description>
+  <description>Local chat, code suggestions with editor snapshots, and automatic popup completion with a separately configurable model, powered by the Local Copilot Node.js backend and Ollama.</description>
   <idea-version since-build="261" until-build="262.*"/>
   <depends>com.intellij.modules.platform</depends>
   <extensions defaultExtensionNs="com.intellij">
     <toolWindow id="Local Copilot" anchor="right" factoryClass="dev.localcopilot.CopilotToolWindowFactory"/>
+    <completion.contributor language="any" implementationClass="dev.localcopilot.CopilotCompletionContributor"/>
+    <typedHandler implementation="dev.localcopilot.CopilotTypedHandler"/>
   </extensions>
 </idea-plugin>

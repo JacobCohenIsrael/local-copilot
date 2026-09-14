@@ -1,4 +1,4 @@
-import { ideSuggest } from './ide.js';
+import { ideRequest } from './ide.js';
 import { errorMessage } from './types.js';
 
 try {
@@ -10,7 +10,7 @@ try {
     if (bytes > 512 * 1024) throw new Error('IDE request exceeds 512 KiB.');
     chunks.push(buffer);
   }
-  console.log(JSON.stringify(await ideSuggest(JSON.parse(Buffer.concat(chunks).toString('utf8')))));
+  console.log(JSON.stringify(await ideRequest(JSON.parse(Buffer.concat(chunks).toString('utf8')))));
 } catch (error) {
   console.error(JSON.stringify({ error: errorMessage(error) }));
   process.exitCode = 1;

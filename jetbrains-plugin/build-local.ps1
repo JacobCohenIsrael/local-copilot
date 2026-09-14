@@ -10,7 +10,7 @@ $package = Join-Path $output 'package/local-copilot/lib'
 New-Item -ItemType Directory -Force -Path $classes, $package | Out-Null
 $javac = Join-Path $sdk 'jbr/bin/javac.exe'
 $classpath = (Join-Path $sdk 'lib/*') + ';' + (Join-Path $sdk 'lib/modules/*')
-$source = Join-Path $pluginRoot 'src/main/java/dev/localcopilot/CopilotToolWindowFactory.java'
+$source = @(Get-ChildItem -LiteralPath (Join-Path $pluginRoot 'src/main/java') -Filter '*.java' -Recurse -File | Select-Object -ExpandProperty FullName)
 & $javac --release 21 -encoding UTF-8 -cp $classpath -d $classes $source
 if ($LASTEXITCODE -ne 0) { throw 'Plugin compilation failed.' }
 Copy-Item -Path (Join-Path $pluginRoot 'src/main/resources/*') -Destination $classes -Recurse -Force
