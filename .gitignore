@@ -1,0 +1,30 @@
+# Installed dependencies and generated build/test output
+node_modules/
+dist/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Downloaded runtimes, model weights, demo repositories, and caches
+.runtime/
+.npm/
+*.log
+
+# Local secrets (templates may be committed)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Personal editor and operating-system files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

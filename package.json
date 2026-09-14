@@ -1,0 +1,26 @@
+{
+  "name": "local-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local code suggestions and Git diff reviews with Ollama",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "local-copilot": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prestart": "npm run build",
+    "start": "node dist/src/cli.js",
+    "predemo": "npm run build",
+    "demo": "node dist/scripts/demo.js",
+    "test": "npm run build && node --test dist/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.2",
+    "typescript": "^7.0.2"
+  }
+}
