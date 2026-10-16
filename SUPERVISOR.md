@@ -2,6 +2,11 @@
 
 **Status: architecture and simulation only. Live execution is unavailable.**
 
+The separate [Docker dummy lifecycle harness](containers/lifecycle/README.md)
+now tests real container start/stop, cancellation, synthetic trips, and host
+process death with sleeping workers. It does not change this TypeScript
+simulator, its policy, or its state. Neither implementation can launch a model.
+
 This adds a separate TypeScript CLI to Local Copilot. It exercises one small coding task with synthetic Strata/OpenCode lifecycles and telemetry. It never opens the model endpoint, starts a child process, queries hardware, loads a model, edits a source file, applies a patch, or changes existing settings. Normal CPU and disk activity comes from the simulator, compiler, and tests.
 
 The target supplied by the owner is Windows, an RTX 3080 Ti laptop GPU with 16 GB VRAM, 32 GB RAM, Strata in `D:\AI`, launcher `run-coder-iq1_m.bat`, Qwen3.8 Flash Next Coder IQ1_M, and an OpenAI-compatible endpoint at `http://localhost:8080/v1`. OpenCode and a Codex CLI custom profile reportedly work with it. These are recorded inputs, not discoveries or validations performed in this phase.
@@ -139,7 +144,12 @@ An eventual MCP wrapper may expose the same bounded planning, simulation, status
 | 4 | Optional tightly bounded Strata startup and one tiny coding task | Explicit launch/workload approval, verified telemetry, approved policy, and known stop mechanism |
 | 5 | Optional MCP transport and reviewed tuning proposals | Same lifecycle, limits, latch, and human approval gates remain in force |
 
-No phase 2–5 actions were performed. The unresolved shutdown must remain an open safety issue; simulator success does not explain or eliminate it.
+At the time phase 1 was implemented, no phase 2–5 actions had been performed.
+Subsequent file/container preflight and the separate dummy harness are recorded
+in `STRATA_CONTAINER_PLAN.md` and `containers/lifecycle/README.md`. A complete
+Windows watchdog and live model gates remain unimplemented. The unresolved
+shutdown remains an open safety issue; simulator and dummy-container success do
+not explain or eliminate it.
 
 ## Verification
 

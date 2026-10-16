@@ -1,5 +1,24 @@
 # Local Copilot
 
+The current goal is an on-demand Docker-contained Strata worker for cloud Codex,
+with Claude support later. Start with the [container plan](STRATA_CONTAINER_PLAN.md)
+and [Docker dummy lifecycle harness](containers/lifecycle/README.md).
+The harness has passed CPU-only lifecycle tests with synthetic telemetry;
+Strata/OpenCode model execution is not enabled. Existing Strata settings remain
+unchanged, and model startup or live policy changes require explicit approval.
+The [safety readiness report](containers/safety/VALIDATION.md) records the tested
+independent dummy watchdog, read-only sensor audit, dedicated-monitor design,
+and disabled pinned Linux build proposal. CPU sensor access remains a live gate.
+The [offline task boundary](containers/worker/README.md) now stages named files
+and returns bounded patches for review; eight tests passed. It cannot execute
+OpenCode or start a model. See [the checkpoint](NEXT_STEPS.md) for remaining gates.
+
+## Historical TypeScript application
+
+The setup below belongs to the earlier Ollama assistant. It is secondary to the
+Strata work and is not part of the current dummy-container validation; its model
+installation and inference steps should not be run as supervisor checks.
+
 A local TypeScript command-line assistant that suggests code using repository context and reviews Git changes for actionable bugs. Output is printed for inspection; the tool does not edit your code or execute generated suggestions.
 
 ## From a fresh clone to a working copilot

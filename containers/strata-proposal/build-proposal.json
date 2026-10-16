@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "status": "proposal-only-not-approved",
+  "buildEnabled": false,
+  "modelLaunchEnabled": false,
+  "source": {
+    "repository": "https://github.com/Niko1221/Strata",
+    "release": "v0.1.44.1",
+    "commit": "296b59d2f73c8f04a805df29c2fa97655adace78",
+    "llamaCppCommit": "3cf03257f219afbe7334045ff7c6a06ac68c627d",
+    "staging": "Clean source archive in this workspace; never COPY D:/AI or model folders"
+  },
+  "base": {
+    "referenceTag": "nvidia/cuda:13.0.0-devel-ubuntu24.04",
+    "image": "nvidia/cuda@sha256:435220c0fef35cbf712e11999f8670a83835ef3cdd18564e5e8122f83078c88c",
+    "platform": "linux/amd64",
+    "metadataCheckedAt": "2026-10-16T13:54:37.9418266Z",
+    "pulled": false
+  },
+  "buildCandidates": {
+    "cudaArchitectures": [86],
+    "vision": false,
+    "compilerJobs": 1,
+    "automaticCompileRetry": false,
+    "cpuQuota": 1,
+    "ramBytes": 4294967296,
+    "swapBytes": 0,
+    "gpuDevices": [],
+    "deadlineSeconds": 1800,
+    "network": "Build dependencies only; separate from runtime network policy",
+    "resourceEnforcement": "Require a separately inspected capped builder cgroup and a harmless quota test before compilation; ordinary Docker build flags are not assumed to enforce these caps"
+  },
+  "runtimeCandidates": {
+    "enabled": false,
+    "builtImageDigest": null,
+    "model": "qwen3.8-flash-next-coder-iq1_m",
+    "maxContext": 8192,
+    "expertMode": "--mmap-experts instead of --resident-experts",
+    "speculativeTokens": 0,
+    "kv": "int8",
+    "vramReserveMiB": 2048,
+    "cpuQuota": 2,
+    "ramBytes": 8589934592,
+    "swapBytes": 0,
+    "autoRestart": false,
+    "internalStartRetries": 0,
+    "automaticSetupOrModelDownloads": false,
+    "configuration": "Separate Linux config under a disposable session; original Windows config stays read-only",
+    "launchCommand": null,
+    "thermalLimits": null,
+    "stopDeadlines": null
+  },
+  "requiredBeforeBuild": [
+    "Owner approval of the CPU compilation workload and exact capped-builder manifest",
+    "Validated CPU temperature and thermal-throttle provider with freshness checks",
+    "Independent watchdog adapted to the exact builder identity and tested before compiler admission",
+    "Disk reserve and dependency download budget measured and approved",
+    "Source/archive verification and full dependency hashes or explicit reproducibility limitations"
+  ],
+  "requiredBeforeModelLaunch": [
+    "Explicit owner approval bound to the immutable full live policy and launch manifest",
+    "Known built image digest and CPU/driver compatibility checks",
+    "All required live telemetry channels and fail-closed sample freshness checks",
+    "Independent watchdog guarding the exact live session; daemon/host/suspend failure gaps resolved",
+    "Approved normal and emergency stop deadlines; two-container shutdown-order tests",
+    "Authenticated request/token/file gate and restricted OpenCode workspace",
+    "Validation of mmap data compatibility and memory/VRAM budgets without automatic configuration upgrades"
+  ]
+}

@@ -1,0 +1,21 @@
+# EARLIER REFERENCE ONLY. Selected route is the ordinary capped compile
+# container in the prepared build-manifest.json; see README.md.
+# Not built, approved, or connected to any launch command.
+# Context must contain clean source/ at the pinned commit and bounded_build.py.
+# Compilation requires an independently enforced, inspected builder CPU/RAM cap.
+# This file alone does not impose a build CPU/RAM budget.
+FROM nvidia/cuda@sha256:435220c0fef35cbf712e11999f8670a83835ef3cdd18564e5e8122f83078c88c
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 LANG=C.UTF-8
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates curl git libatomic1 libgomp1 python3 python3-pip python3-venv unzip \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/strata
+COPY source/ /opt/strata/
+COPY bounded_build.py /proposal/bounded_build.py
+RUN python3 -m venv .venv \
+    && .venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN .venv/bin/python /proposal/bounded_build.py
+# Intentionally no default setup/server, volume, exposed port, or GPU healthcheck.
+# Even a successful future build must be given a separately approved launch path.
+HEALTHCHECK NONE
+ENTRYPOINT ["/bin/false"]
