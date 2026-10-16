@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "division-guard-demo",
+  "instruction": "Propose a division-by-zero guard for divide. Keep this task within math.ts; do not execute commands.",
+  "context": [
+    {
+      "file": "src/math.ts",
+      "content": "export function divide(a: number, b: number) { return a * b; }\n"
+    }
+  ],
+  "writableFiles": ["src/math.ts"]
+}
