@@ -1,5 +1,9 @@
 # Bounded coding-task intake — offline only
 
+The [request-gate milestone](REQUEST_GATE.md) adds offline call/token/time
+admission logic with 15 new tests. It has no model connection or HTTP listener;
+the container proposal below remains disabled.
+
 `task_bundle.py` prepares a disposable copy of explicitly named UTF-8 files and
 collects a bounded patch for cloud review. It has no process launcher, Docker
 client, HTTP client, GPU access, Strata startup, or OpenCode invocation. No

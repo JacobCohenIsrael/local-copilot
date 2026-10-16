@@ -4,7 +4,8 @@ Owner stop rule: check the five-hour Codex allowance before substantial work
 and between bounded steps. At 5% remaining (95% consumed), save this checkpoint,
 stop any task-owned workers/containers, and pause. Leave unrelated processes
 and Docker Desktop alone. Resume on owner direction or after the allowance
-resets. Latest check: 6% remaining; no task-owned workloads are running.
+resets. The five-hour window reset; latest check: 97% remaining.
+No task-owned workloads are running.
 
 Owner priority: reach a first bounded Strata coding task quickly and reduce
 cloud Codex usage. Freeze optional diagnostics, dashboards, new monitor suites,
@@ -83,6 +84,13 @@ is version 2.0.26; Linux binary/checksum/runtime dependencies are not verified.
 unresolved. Request-gate proxy/network, actual token/call/deadline enforcement
 and live sensor admission remain to implement; OpenCode steps are not a hard
 request cap. No OpenCode command, Docker image build/pull, or model call ran.
+Offline request-budget logic is now in `containers/worker/request_gate.py`:
+15 additional tests pass, covering call/context/task reservations, monotonic
+deadlines, bounded request/response bytes and latched faults. See
+`containers/worker/REQUEST_GATE.md`. The CLI uses a synthetic token counter;
+there is no HTTP server, exact tokenizer, engine cancellation or live enable.
+Next connect this core to a bounded HTTP proxy with a fake backend, still
+without loading Strata. Keep the change focused and reviewable on this branch.
 Do not describe either route as ready for immediate model use.
 
 Use a tiny disposable coding task and limited context for the first approved
