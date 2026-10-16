@@ -20,6 +20,10 @@ Admission charges prompt tokens plus maximum requested output against the
 whole task, including repeated history on every call. Output reservations are
 never refunded from backend usage claims. Missing output caps are injected;
 excessive caps are rejected. There are no automatic retries.
+The pinned OpenCode compatibility check added strict support for `store: false`,
+usage-only `stream_options`, and the `max_completion_tokens` output-cap alias.
+Both cap names obey the same ceiling and cannot be provided together. Storage
+requests and other stream options stay rejected; live policy remains disabled.
 
 Monotonic deadline checks, budget exhaustion, invalid clocks/token counts,
 counter/transport failure and cancellation latch the first fault. Stale call
@@ -58,6 +62,9 @@ rejection, silent-call deadlines, byte limits, clock/counter errors and faults.
 
 ## Remaining before live use
 
+- A [fake-only HTTP rehearsal](HTTP_REHEARSAL.md) now exercises the core with
+  real loopback sockets. Its 16 tests do not establish live compatibility or
+  engine cancellation. The core module itself remains network-free.
 - An HTTP proxy must serialize access, authenticate the task, validate supported
   request/tool shapes, enforce socket/body deadlines and prevent network bypass.
   The core accepts streaming requests and meters raw chunks; it does not parse

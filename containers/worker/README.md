@@ -3,6 +3,17 @@
 The [request-gate milestone](REQUEST_GATE.md) adds offline call/token/time
 admission logic with 15 new tests. It has no model connection or HTTP listener;
 the container proposal below remains disabled.
+The [HTTP rehearsal](HTTP_REHEARSAL.md) now tests that core over actual loopback
+connections to an owned fake backend; 16 integration tests and two CLI checks
+passed. It cannot connect to Strata or run OpenCode.
+The [Linux OpenCode compatibility check](OPENCODE_COMPATIBILITY.md) now runs the
+verified CLI in a capped, network-disabled container against fake loopback
+servers. It passed; no model was loaded or file edited. The live worker recipe
+remains disabled. The worker regression suite now has 48 passing tests.
+The [file action checks](OPENCODE_ACTIONS.md) add a real CLI edit of a synthetic
+file and blocked shell/external/unlisted-file requests. Title generation is
+disabled in the proposal; file permission resources use verified relative
+paths. All 51 worker tests pass. Strata remains off.
 
 `task_bundle.py` prepares a disposable copy of explicitly named UTF-8 files and
 collects a bounded patch for cloud review. It has no process launcher, Docker
@@ -77,9 +88,10 @@ OpenCode project configs and `.env` files cannot be supplied to this adapter.
 
 The installed Windows package metadata identifies `@opencode/cli` version
 2.0.26 from `anomalyco/opencode`; this is a Linux version candidate, not a
-verified Linux artifact. `Dockerfile.proposed` expects a separately verified
-Linux binary and supplied checksum. No binary was downloaded, image pulled,
-image built, or CLI executed. Linux runtime dependencies remain unverified.
+verified Linux artifact at the proposal stage. A matching musl binary and two
+runtime libraries have since been staged and tested by the compatibility check
+above. `Dockerfile.proposed` still needs an assembled context including those
+libraries before any approved build; no image was built or pulled.
 The default image entrypoint refuses execution. A Docker entrypoint is not an
 authorization boundary; the eventual host supervisor must enforce admission.
 

@@ -50,8 +50,12 @@ class RequestGateTests(unittest.TestCase):
 
     def test_bad_request_does_not_consume_calls(self):
         cases = [self.body(model='other'), self.body(max_tokens=True), self.body(max_tokens=0),
-                 self.body(max_tokens=513), self.body(max_completion_tokens=10),
-                 self.body(stream='true'), self.body(messages=[]), self.body(tools={}),
+                 self.body(max_tokens=513), self.body(max_completion_tokens=True),
+                 self.body(max_completion_tokens=513), self.body(max_tokens=10, max_completion_tokens=10),
+                 self.body(stream='true'), self.body(store=True), self.body(store='false'),
+                 self.body(stream_options={'include_usage': 1}),
+                 self.body(stream_options={'include_usage': True, 'other': True}),
+                 self.body(stream_options=None), self.body(messages=[]), self.body(tools={}),
                  self.body(messages=[{'role': 'user', 'content': [{'type': 'image_url'}]}]),
                  b'{"model":"test-model","model":"other"}',
                  b'{"tools":[NaN]}', b'{"tools":[1e999]}', b'[]', b'\xff', b'not json']
@@ -80,7 +84,10 @@ class RequestGateTests(unittest.TestCase):
                      'tool_calls': [{'id': 'call1', 'type': 'function',
                                      'function': {'name': 'read', 'arguments': '{"path":"x.py"}'}}]},
                     {'role': 'tool', 'content': 'file text', 'tool_call_id': 'call1'}]
-        self.gate.admit(self.body(messages=messages, max_tokens=128))
+        admitted = self.gate.admit(self.body(messages=messages, max_completion_tokens=128,
+                                  store=False, stream_options={'include_usage': True}))
+        self.assertEqual(admitted['request']['max_completion_tokens'], 128)
+        self.assertNotIn('max_tokens', admitted['request'])
         self.assertEqual(self.seen[0]['messages'], messages)
         self.assertEqual(self.gate.charged_tokens, self.tokens + 128)
 

@@ -13,9 +13,12 @@ class OpenCodePlanTests(unittest.TestCase):
         self.assertFalse(plan['executionEnabled'])
         self.assertFalse(plan['modelEnabled'])
         self.assertIsNone(plan['opencode']['imageDigest'])
+        self.assertIn('--standalone', plan['opencode']['argvTemplate'])
+        self.assertNotIn('--dir', plan['opencode']['argvTemplate'])
         rules = plan['config']['permission']
         self.assertEqual(rules['*'], 'deny')
-        self.assertEqual(rules['read'], {'*': 'deny', '/workspace/fix.py': 'allow'})
+        self.assertEqual(rules['read'], {'*': 'deny', 'fix.py': 'allow'})
+        self.assertTrue(plan['config']['agent']['title']['disable'])
         self.assertEqual(plan['config']['agent']['bounded']['permission'], rules)
         self.assertEqual(plan['config']['enabled_providers'], ['strata'])
         self.assertEqual(len(plan['containerCandidates']['mounts']), 2)

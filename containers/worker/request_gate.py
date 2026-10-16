@@ -101,7 +101,8 @@ class RequestGate:
                                  parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
         except (ValueError, RecursionError):
             raise Rejected('INVALID_JSON') from None
-        allowed = {'model', 'messages', 'tools', 'tool_choice', 'stream', 'max_tokens'}
+        allowed = {'model', 'messages', 'tools', 'tool_choice', 'stream', 'max_tokens',
+                   'store', 'stream_options', 'max_completion_tokens'}
         if not isinstance(request, dict) or set(request) - allowed:
             raise Rejected('UNSUPPORTED_REQUEST_FIELDS')
         if request.get('model') != self.model:
@@ -121,11 +122,19 @@ class RequestGate:
             raise Rejected('INVALID_TOOLS')
         if 'stream' in request and type(request['stream']) is not bool:
             raise Rejected('INVALID_STREAM')
-        output = request.get('max_tokens', self.limits.output_tokens)
+        if 'store' in request and request['store'] is not False:
+            raise Rejected('STORAGE_NOT_ALLOWED')
+        if 'stream_options' in request and (request['stream_options'] != {'include_usage': True} or
+                type(request['stream_options'].get('include_usage')) is not bool):
+            raise Rejected('UNSUPPORTED_STREAM_OPTIONS')
+        if 'max_tokens' in request and 'max_completion_tokens' in request:
+            raise Rejected('AMBIGUOUS_OUTPUT_CAP')
+        output_field = 'max_completion_tokens' if 'max_completion_tokens' in request else 'max_tokens'
+        output = request.get(output_field, self.limits.output_tokens)
         if type(output) is not int or not 1 <= output <= self.limits.output_tokens:
             raise Rejected('OUTPUT_TOKEN_BUDGET')
         # Count the normalized request, including injected output cap and all tools.
-        request['max_tokens'] = output
+        request[output_field] = output
         if len(json.dumps(request, separators=(',', ':')).encode('utf-8')) > self.limits.request_bytes:
             raise Rejected('REQUEST_BYTES')
         try:

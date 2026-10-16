@@ -1,4 +1,5 @@
-# Disabled review recipe; no Linux OpenCode artifact has been staged/verified.
+# Disabled review recipe; verified musl CLI/libs are staged under .runtime.
+# Not an assembled context: add pinned runtime libraries before an approved build.
 # Building requires separate approval. No network installer or latest tag.
 FROM docker.io/library/python@sha256:2055081c860db8c842b663415b795b026e7e5cc63b59c5193fcc9997713ea5b8
 ARG OPENCODE_SHA256

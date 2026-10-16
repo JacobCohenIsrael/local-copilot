@@ -4,7 +4,7 @@ Owner stop rule: check the five-hour Codex allowance before substantial work
 and between bounded steps. At 5% remaining (95% consumed), save this checkpoint,
 stop any task-owned workers/containers, and pause. Leave unrelated processes
 and Docker Desktop alone. Resume on owner direction or after the allowance
-resets. The five-hour window reset; latest check: 97% remaining.
+resets. The five-hour window reset; latest check: 70% remaining.
 No task-owned workloads are running.
 
 Owner priority: reach a first bounded Strata coding task quickly and reduce
@@ -79,18 +79,49 @@ remain unfinished.
 proposal from a pristine bundle. Three new checks pass (11 worker tests total).
 It denies tools by default, permits named-file read/edit only, and rejects
 project OpenCode/agent/credential controls. Installed Windows package metadata
-is version 2.0.26; Linux binary/checksum/runtime dependencies are not verified.
+is version 2.0.26; the matching Linux musl binary and libraries are now verified
+for the fake-only compatibility check described below.
 `Dockerfile.proposed` is unbuilt and refuses execution by default. Model ID is
 unresolved. Request-gate proxy/network, actual token/call/deadline enforcement
 and live sensor admission remain to implement; OpenCode steps are not a hard
-request cap. No OpenCode command, Docker image build/pull, or model call ran.
+request cap. No Docker image build/pull or real model call has run.
 Offline request-budget logic is now in `containers/worker/request_gate.py`:
 15 additional tests pass, covering call/context/task reservations, monotonic
 deadlines, bounded request/response bytes and latched faults. See
 `containers/worker/REQUEST_GATE.md`. The CLI uses a synthetic token counter;
 there is no HTTP server, exact tokenizer, engine cancellation or live enable.
-Next connect this core to a bounded HTTP proxy with a fake backend, still
-without loading Strata. Keep the change focused and reviewable on this branch.
+That next step is complete in `containers/worker/http_rehearsal.py`: 16 real
+loopback integration tests and two CLI checks passed. Auth, gate admission,
+JSON/SSE relay, deadlines, cancellation/client loss and cleanup are exercised
+against owned fake servers only. See `containers/worker/HTTP_REHEARSAL.md`;
+evidence is `.runtime/worker-http/{stream,timeout}.json`. No arbitrary upstream
+URL or live-enable exists; that HTTP-only milestone started no Strata/OpenCode/container. The timer
+is same-process; actual engine cancellation, exact token counting, durable
+FAULT state and isolated Docker networks remain unfinished.
+Linux OpenCode compatibility is now complete for a text response: the pinned
+`@opencode/cli-linux-x64-baseline-musl` 2.0.26 binary and two pinned Alpine
+libraries ran in the cached Python/Alpine container, network=none, no GPU,
+0.5 CPU, 512 MiB/no extra swap, 64 pids, read-only input/root and a 10-second
+inner deadline. The real CLI returned `synthetic OK` via fake loopback servers
+and the request gate; no workspace file was edited. All test containers were
+removed. The CLI needed `--standalone` and cwd, not the draft's `--dir`.
+The gate strictly accepts observed store=false, usage-only stream_options and
+the output-cap alias, without increasing budgets. All 48 worker tests passed.
+See `containers/worker/OPENCODE_COMPATIBILITY.md`. Artifact directory:
+`.runtime/opencode-linux/2.0.26-musl-44f176ba`; successful receipt:
+`.runtime/opencode-linux/checks/4c0271d5a7514d5f8c4b62f89519500e/result.json`.
+Auxiliary requests and fake-directed file actions are now verified; see
+`containers/worker/OPENCODE_ACTIONS.md`. Disabling agent.title reduces a plain
+reply to one model request. An allowed example.py edit and shell/external-read/
+unlisted-write denials each complete within the unchanged two-call limit.
+Internal allow rules use location-relative paths; actual tool arguments use
+path, and the command tool is shell. The proposal is corrected accordingly.
+All 51 worker tests passed. Native receipts are recorded in that report;
+all owned test containers were removed. No actual model or host project ran.
+Next connect the verified fake edit to task_bundle input/patch collection in
+one bounded command, retaining the existing safety gates and unchanged caps.
+Strata engine build/admission, live tokenizer, durable FAULT/watchdog and
+real coding-task integration remain gated. Keep each diff focused.
 Do not describe either route as ready for immediate model use.
 
 Use a tiny disposable coding task and limited context for the first approved

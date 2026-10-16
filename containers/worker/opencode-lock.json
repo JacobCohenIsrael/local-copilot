@@ -1,0 +1,12 @@
+{
+  "package": "@opencode/cli-linux-x64-baseline-musl",
+  "version": "2.0.26",
+  "archiveSha256": "64ca10f2abc9a9dc167151f9e3c02371c0e240fa3b9c747a0efc1278151db55e",
+  "binarySha256": "792f284be6bb46e4093fab6162f38575ebb44a61594e4ebb5a2698ba217c8e59",
+  "archiveBytes": 96953102,
+  "binaryBytes": 210462256,
+  "registry": "https://registry.npmjs.org",
+  "signatureVerified": false,
+  "modelEnabled": false,
+  "variantReason": "Pinned cached Python base is Alpine 3.24.2; glibc variant needs an unavailable loader"
+}

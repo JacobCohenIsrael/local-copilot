@@ -17,12 +17,14 @@ def plan(run_id):
     if result['changedFiles']:
         raise ValueError('PRISTINE_WORKSPACE_REQUIRED')
     manifest = bundle.read_json(bundle.ROOT / run_id / 'manifest.json')
+    artifact = bundle.read_json(Path(__file__).with_name('opencode-lock.json'))
     names = list(manifest['files'])
     for name in names:
         if any(part.casefold() in BLOCKED or part.casefold().startswith('.env.')
                for part in name.split('/')):
             raise ValueError('WORKER_CONTROL_OR_SECRET_FILE')
-    paths = {'*': 'deny', **{'/workspace/' + name: 'allow' for name in names}}
+    # OpenCode 2.0.26 authorizes internal files by location-relative resource.
+    paths = {'*': 'deny', **{name: 'allow' for name in names}}
     permissions = {'*': 'deny', 'read': paths, 'edit': paths.copy(),
                    'external_directory': 'deny', 'doom_loop': 'deny'}
     config = {
@@ -37,7 +39,8 @@ def plan(run_id):
                               'models': {'VERIFY_SERVED_MODEL_ID': {
                                   'name': 'Strata (identity not verified)',
                                   'limit': {'context': 8192, 'output': 512}}}}},
-        'agent': {'bounded': {'description': 'One small supervised edit',
+        'agent': {'title': {'disable': True},
+                  'bounded': {'description': 'One small supervised edit',
                               'mode': 'primary', 'steps': 2,
                               'permission': permissions.copy(),
                               'prompt': 'Edit only the explicitly supplied files. Do not delegate. '
@@ -54,11 +57,12 @@ def plan(run_id):
         'version': 1, 'status': 'DISABLED_PROPOSAL', 'executionEnabled': False,
         'modelEnabled': False, 'runId': run_id,
         'manifestSha256': hashlib.sha256((bundle.ROOT / run_id / 'manifest.json').read_bytes()).hexdigest(),
-        'opencode': {'versionCandidate': '2.0.26', 'linuxArtifactSha256': None,
+        'opencode': {'versionCandidate': '2.0.26', 'linuxArtifactSha256': artifact['binarySha256'],
+                     'package': artifact['package'],
                      'imageDigest': None, 'baseImage': BASE,
-                     'argvTemplate': ['opencode', 'run', '--format', 'json', '--agent', 'bounded',
+                     'argvTemplate': ['opencode', 'run', '--standalone', '--format', 'json', '--agent', 'bounded',
                                       '--model', 'strata/VERIFY_SERVED_MODEL_ID',
-                                      '--dir', '/workspace', '<bounded task text>']},
+                                      '<bounded task text>'], 'workingDirectory': '/workspace'},
         'config': config, 'environment': environment,
         'containerCandidates': {'user': '65532:65532', 'cpus': 0.5, 'memoryBytes': 536870912,
                                 'memorySwapBytes': 536870912, 'pids': 64,
