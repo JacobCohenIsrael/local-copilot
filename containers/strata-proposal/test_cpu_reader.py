@@ -24,6 +24,7 @@ class ReaderContractTests(unittest.TestCase):
         self.assertFalse(contract['sensorAccessed'])
         self.assertFalse(contract['workloadStarted'])
         self.assertFalse(contract['longRunValidated'])
+        self.assertAlmostEqual(contract['fractionalCoverageExample'], 1.9)
         self.assertLessEqual(contract['maxSamples'], contract['frameBudget'])
         draft, _ = review.load_draft()
         # Last emitted sample is one interval before the final coverage boundary.

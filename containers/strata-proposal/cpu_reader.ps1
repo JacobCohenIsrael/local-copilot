@@ -7,11 +7,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $maxDurationSeconds = 1920
 $sampleIntervalSeconds = 1
+function Get-RemainingCoverageSeconds([double]$ElapsedSeconds, [double]$LastSampleSlot) {
+    # Explicit doubles prevent .NET selecting an integer overload and rounding
+    # a fractional deadline upwards.
+    return [math]::Max([double]0,
+        [math]::Min([double]$maxDurationSeconds, $LastSampleSlot) - $ElapsedSeconds)
+}
 if ($Describe) {
     [ordered]@{ version=1; maxDurationSeconds=$maxDurationSeconds; maxSamples=1920;
         requestedSamples=$Samples; defaultSamples=3; sampleIntervalSeconds=$sampleIntervalSeconds;
         frameBudget=2048; sensorAccessed=$false; workloadStarted=$false;
-        validatedCpuSensor=$false; longRunValidated=$false } | ConvertTo-Json -Compress
+        validatedCpuSensor=$false; longRunValidated=$false;
+        fractionalCoverageExample=(Get-RemainingCoverageSeconds 0.1 2) } | ConvertTo-Json -Compress
     return
 }
 if (-not $SessionDirectory) { throw 'SessionDirectory is required unless describing the contract' }
@@ -63,8 +70,7 @@ for ($sequence=1; $sequence -le $Samples; $sequence++) {
     $sample.recordedAtUnix = ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0)
     # Declared remaining coverage is not a liveness guarantee. Default three-sample
     # probes must never masquerade as a full-build monitoring session.
-    $sample.readerRemainingSeconds = [math]::Max(0,
-        [math]::Min($maxDurationSeconds, $lastSampleSlot) - $sessionClock.Elapsed.TotalSeconds)
+    $sample.readerRemainingSeconds = Get-RemainingCoverageSeconds $sessionClock.Elapsed.TotalSeconds $lastSampleSlot
     $temporary = Join-Path $directory ('sample-' + $sequence + '.tmp')
     $json = $sample | ConvertTo-Json -Depth 4 -Compress
     [IO.File]::WriteAllText($temporary, $json)

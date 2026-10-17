@@ -1,169 +1,145 @@
-# Usage-conscious checkpoint — 16 October 2026
+# Project checkpoint ג€” 17 October 2026
 
-Owner stop rule: check the five-hour Codex allowance before substantial work
-and between bounded steps. At 5% remaining (95% consumed), save this checkpoint,
-stop any task-owned workers/containers, and pause. Leave unrelated processes
-and Docker Desktop alone. Resume on owner direction or after the allowance
-resets. The five-hour window reset; latest check: 57% remaining.
-No task-owned workloads are running.
+Goal: an on-demand Strata coding worker inside Docker, orchestrated by cloud
+Codex first and Claude later. Keep tasks/context/files bounded and return patches
+for review. Optional MCP, UI, tuning and historical TypeScript/JetBrains work wait.
 
-Owner priority: reach a first bounded Strata coding task quickly and reduce
-cloud Codex usage. Freeze optional diagnostics, dashboards, new monitor suites,
-MCP, performance tuning, and the historical TypeScript/JetBrains application.
+Owner revoked account-usage tracking/reporting and usage-based pauses. Do not
+check allowances. No task-owned workloads are running.
 
-## Decisions and safety scope
+## Approval boundaries
 
-- Route selected by owner: keep Strata itself in Docker and prepare the Linux
-  engine build. Do not reopen the temporary Windows-engine option.
-- This choice is not model-start or policy-change approval. No Strata model,
-  CUDA build, stress test, driver install, power/firmware change, or live policy
-  activation has been performed or newly authorized.
-- Preserve original `D:\AI` launch/config files. A first-use configuration must
-  be a separate reviewed copy; do not run the original launcher as a shortcut.
-- CPU temperature read works with administrator access through fixed ASUS DSTS
-  endpoint `0x00120094`. Executed snapshot: 90 °C. Later Armoury screenshot:
-  CPU 81 °C / GPU 57 °C. Not simultaneous, not a calibration or safe envelope.
-- CPU hardware thermal-throttle source remains unknown. Owner approved the
-  CPU-only build exception and reviewed controls on 16 October 2026; the missing
-  flag stays null. Windows frequency limits remain advisory. This exception
-  does not cover model runtime or authorize compilation. Do not ask again for
-  this policy decision; see the approval record below.
+- CPU-only build exception: unknown hardware throttle status may remain null.
+- Approved temperature revision: <=92 C for ten seconds before admission;
+  latch FAULT and trigger stopping on a reading >=97 C. One CPU, 4 GiB RAM,
+  no extra swap/GPU, 128 processes, one compiler job, 30 minutes, no retry.
+- Receipts: `containers/strata-proposal/build-policy-approval.json` and
+  `thermal-revision-approval.json`. Historical proposals remain unchanged;
+  `load_effective_controls()` verifies both hash bindings. Do not ask again
+  for these decisions.
+- These approvals do NOT authorize compilation, image pulls, model loading,
+  GPU load tests, new drivers or firmware/power/fan/performance-mode changes.
+  Prepare the concrete final build workload for owner approval after gates pass.
+- Preserve D:\AI and model/configuration data. The earlier instant shutdown
+  (Kernel-Power 41, bugcheck 0) remains unexplained; do not diagnose its cause.
 
-## What already works
+## Source holder and offline compiler proposal
 
-- Pure simulator: `SUPERVISOR.md`; its fixed policy is simulation only.
-- Real CPU-only Docker lifecycle harness: `containers/lifecycle/README.md`;
-  16 unit tests, seven Docker cases, JSON CLI smoke test passed.
-- Independent host watchdog prototype: `containers/safety/README.md`;
-  ten initial unit tests and three real Docker cases passed. It stops an
-  uncooperative dummy/descendant after lost producer heartbeat. It is scoped to
-  dummy targets and is not a live Strata guard yet.
-- CPU access: `containers/safety/CPU_ACCESS_VALIDATION.md`; one hash-checked
-  elevated probe completed and exited. Three additional CPU-limit unit tests
-  were added. No persistent elevated helper was installed.
-- Read-only GPU/RAM/AC availability worked. A low-overhead direct-NVML collector
-  is designed, not implemented. ASUS is the preferred existing CPU source.
-- Disabled pinned Linux build proposal: `containers/strata-proposal/`.
+`containers/strata-proposal/build-candidate.json` identifies the source-only holder
+`.runtime/strata-build/1c9c3253` with disabled build/model flags.
+Manifest SHA256:
+`ea5b063e3ebbacb3fea1f82d9b83f78b7502abc9d2b5bc1656514c4cbbf48804`.
 
-## Smallest next implementation
+Sources are Strata 296b59d2f73c8f04a805df29c2fa97655adace78 (v0.1.44.1)
+and llama.cpp 3cf03257f219afbe7334045ff7c6a06ac68c627d. The refreshed package
+uses existing verified archives, includes the current compiler helper and has
+a disabled guard contract. No new downloads, image pull, upstream code execution
+or compilation occurred. Original package 1537f5ec and its manifest are intact.
+The CUDA 13 Ubuntu base remains unpulled. The historical networked apt/pip recipe
+is superseded and not an execution candidate; missing staged source fails rather
+than invoking a download.
 
-Pinned Strata and llama.cpp source archives are staged in
-`.runtime/strata-build/1537f5ec/input/source`, with a disabled
-`build-manifest.json` beside `input/`. Downloaded source totals 62,426,870 bytes;
-no source code was executed. Four key source files match the reviewed snapshot.
-`containers/strata-proposal/prepare.py` prepares this package without Docker calls.
-The selected compile route is an ordinary Docker container capped at one CPU,
-4 GiB RAM, zero swap, 128 processes, no GPU requests, one compiler job, and a
-30-minute inner timeout. No Docker socket/model/credential mounts. Its writable
-container layer holds build dependencies and output; source input is read-only.
+`offline-build-candidate.json` selects the disabled offline successor:
+`.runtime/offline-build/836b14c728b047e695b24a48e6bf35fb/offline-plan.json`, SHA256
+`bf8a31786ec53163124244d1e82813108fa0e2b240d77d79d5979036c5e7d2dc`.
+Its final filesystem/workload profile is not approved. It proposes network=none,
+read-only root/source/tools and non-root execution; /work 2 GiB, /tmp 128 MiB,
+/dev/shm 16 MiB, all sharing the same approved 4 GiB/no-extra-swap memory cap.
+It removes apt/pip/setup.py from compilation; only the engine target is built.
+Full compile fit is unknown: OOM/ENOSPC must fault without retries/cap increases.
 
-The sensor/guard contract is connected to this compiler identity; see
-`containers/strata-proposal/BUILD_GUARD.md`. Nine mocked checks and four Docker
-rehearsals passed (synthetic heat, stale sensor, lost controller, cancellation).
-The bounded elevated reader emitted three samples (94, 94, 83 °C) and exited.
-CPU throttle remains null and sensor safety validation is incomplete, so actual
-compilation remains blocked. Next settle the live CPU-only build admission
-policy and outstanding channels; do not silently waive them.
-Docker Strata requires the capped Linux engine build; it is not already a ready
-cached image. Do not start the compiler until remaining admission gates and the
-explicit build approval are satisfied.
+Verified tool bytes are staged at
+`.runtime/build-tools/ec73930b8fe5475296d70e1eacb4b065`: CMake 4.4.3 and Ninja
+1.13.2, exactly 30,415,348 archive bytes / 76,349,964 extracted bytes (4,161 files).
+No downloaded tool was installed/executed. `stage_build_tools.py` enforces locked
+HTTPS URLs, no redirects/retries, exact size/hash, safe archive paths, 64 MiB
+archive/256 MiB expanded budgets and a 512 MiB combined namespace limit with a
+cross-process lock. The 20 GiB host free-space check is not a reservation or
+Docker-VM capacity proof. A failed first Ninja-layout attempt is retained and
+counted; its directory has no successful receipt and must not be used.
 
-Offline task intake and patch collection now work in `containers/worker/`:
-eight tests passed, including real hard-link rejection and Git patch validity.
-Only explicitly named UTF-8 files are copied; output growth, unexpected paths,
-baseline changes, links and oversized patches are rejected. No originals are
-edited, no process/model runs, and no patch is applied. Fixed offline caps:
-eight files, 64 KiB/file, 128 KiB total, 4,000 task characters, 64 KiB patch.
-These are test caps, not token accounting or an approved live policy.
-OpenCode's Docker execution, token/time/tool budgets and guard integration
-remain unfinished.
-`containers/worker/opencode_plan.py` now emits a disabled container/config
-proposal from a pristine bundle. Three new checks pass (11 worker tests total).
-It denies tools by default, permits named-file read/edit only, and rejects
-project OpenCode/agent/credential controls. Installed Windows package metadata
-is version 2.0.26; the matching Linux musl binary and libraries are now verified
-for the fake-only compatibility check described below.
-`Dockerfile.proposed` is unbuilt and refuses execution by default. Model ID is
-unresolved. Request-gate proxy/network, actual token/call/deadline enforcement
-and live sensor admission remain to implement; OpenCode steps are not a hard
-request cap. No Docker image build/pull or real model call has run.
-Offline request-budget logic is now in `containers/worker/request_gate.py`:
-15 additional tests pass, covering call/context/task reservations, monotonic
-deadlines, bounded request/response bytes and latched faults. See
-`containers/worker/REQUEST_GATE.md`. The CLI uses a synthetic token counter;
-there is no HTTP server, exact tokenizer, engine cancellation or live enable.
-That next step is complete in `containers/worker/http_rehearsal.py`: 16 real
-loopback integration tests and two CLI checks passed. Auth, gate admission,
-JSON/SSE relay, deadlines, cancellation/client loss and cleanup are exercised
-against owned fake servers only. See `containers/worker/HTTP_REHEARSAL.md`;
-evidence is `.runtime/worker-http/{stream,timeout}.json`. No arbitrary upstream
-URL or live-enable exists; that HTTP-only milestone started no Strata/OpenCode/container. The timer
-is same-process; actual engine cancellation, exact token counting, durable
-FAULT state and isolated Docker networks remain unfinished.
-Linux OpenCode compatibility is now complete for a text response: the pinned
-`@opencode/cli-linux-x64-baseline-musl` 2.0.26 binary and two pinned Alpine
-libraries ran in the cached Python/Alpine container, network=none, no GPU,
-0.5 CPU, 512 MiB/no extra swap, 64 pids, read-only input/root and a 10-second
-inner deadline. The real CLI returned `synthetic OK` via fake loopback servers
-and the request gate; no workspace file was edited. All test containers were
-removed. The CLI needed `--standalone` and cwd, not the draft's `--dir`.
-The gate strictly accepts observed store=false, usage-only stream_options and
-the output-cap alias, without increasing budgets. All 48 worker tests passed.
-See `containers/worker/OPENCODE_COMPATIBILITY.md`. Artifact directory:
-`.runtime/opencode-linux/2.0.26-musl-44f176ba`; successful receipt:
-`.runtime/opencode-linux/checks/4c0271d5a7514d5f8c4b62f89519500e/result.json`.
-Auxiliary requests and fake-directed file actions are now verified; see
-`containers/worker/OPENCODE_ACTIONS.md`. Disabling agent.title reduces a plain
-reply to one model request. An allowed example.py edit and shell/external-read/
-unlisted-write denials each complete within the unchanged two-call limit.
-Internal allow rules use location-relative paths; actual tool arguments use
-path, and the command tool is shell. The proposal is corrected accordingly.
-All 51 worker tests passed. Native receipts are recorded in that report;
-all owned test containers were removed. No actual model or host project ran.
-The complete bundle path now passes in `containers/worker/bundle_rehearsal.py`:
-synthetic originals -> selected copy -> read-only worker input -> scratch edit
--> bounded returned bytes -> confirmed removal -> host import/patch collection.
-Original selected/unselected files stayed unchanged. The native result is
-PATCH_FOR_REVIEW with a 113-byte patch, two fake calls and no OOM. All 59 worker
-tests pass (eight new bridge tests). See `containers/worker/BUNDLE_REHEARSAL.md`.
-Evidence: `.runtime/bundle-rehearsals/00b01b6a858d448686e1f5cc7049645c/result.json`.
-No original/baseline or writable host workspace is mounted; no real project,
-arbitrary task, actual tokenizer/model or live policy is enabled by this CLI.
-The concrete CPU-only policy review is now in
-`containers/strata-proposal/BUILD_POLICY_REVIEW.md` and `build-policy.draft.json`.
-The owner APPROVED the exception allowing unknown hardware throttle status for
-one CPU-only compile, never model runtime. Reviewed start <=75 C for 10 seconds,
-stop >=80 C, one CPU/4 GiB/no GPU, 30 minutes, no retry; these are restrictive
-review values, not certified safe limits. The decision is hash-bound in
-`build-policy-approval.json`, quoting the owner's reply. It is controls-only,
-not workload approval. The original draft remains unchanged as a historical
-snapshot. Existing `build_guard.py` rejects all actual builds; no live policy
-was enabled. Its legacy sample validator still requires a throttle flag.
-`build_policy_review.py` accepts synthetic observations only and now reports
-POLICY_APPROVED_BUILD_BLOCKED, preserving unknown as null. Policy/manifest
-changes invalidate the approval binding; reader changes are explicitly reported
-for revalidation. Five additional tests pass (23 proposal tests total), including
-three real PowerShell -Describe checks outside the sandbox, without sensor reads.
-The reader's former timing gap is addressed in code: 1,920 samples/32 minutes,
-fixed monotonic slots, remaining coverage and early exit on query failure/overrun.
-The three-sample default stays unchanged. Short probes cannot admit a build;
-simulation requires enough remaining reader time for the full build plus stop,
-subtracting sample age. No long hardware run or real stop-latency proof occurred.
-Next validate source meaning/update behavior and the revised reader, then wire
-and test the live controller/stop deadlines. Source validation, actual coverage,
-controller/stop deadlines, disk/download
-budgets and final build workload approval remain outstanding. Do not read an
-approval of the exception as approval to start compilation or load a model.
-Keep build/model launch disabled
-until those gates and explicit approvals are satisfied; avoid more optional
-dummy infrastructure, MCP or UI work.
-Strata engine build/admission, live tokenizer, durable FAULT/watchdog and
-real coding-task integration remain gated. Keep each diff focused.
-Do not describe either route as ready for immediate model use.
+Run `python -B containers/strata-proposal/build_preflight.py` for the read-only
+candidate/policy/helper check. It cannot call Docker, read sensors or start work.
+Current helpers match; four blockers remain:
 
-Use a tiny disposable coding task and limited context for the first approved
-local delegation. Cloud Codex reviews its output. Keep existing source/data
-read-only and avoid feeding this full conversation to the local worker.
+1. CPU-source validation: ASUS fixed status read works, but meaning/update
+   coverage is not yet accepted as a safety feed; the reader emits
+   validatedCpuSensor=false. Armoury 90ג€“95 C and read-only ASUS 95/95/94 C
+   broadly agreed. These observations do not prove calibration/future freshness.
+2. Live admission remains disabled. The offline-target matcher and controller
+   are now implemented, with independent-process guarding, durable FAULT within
+   each rehearsal namespace and output collection. Three native fake-worker cases
+   pass, including safety stops while export is blocked. The real CPU reader is
+   not connected/validated; the production target is rejected by Session and
+   GuardedExport. Before enabling an approved build, use one fixed live state
+   namespace, recheck all input/tool hashes and bind the final workload approval.
+3. Dependency/image/storage readiness: tool staging is bounded and the offline
+   compiler profile avoids downloads/root writes. Still bound/approve CUDA image
+   staging and measure VM capacity; verify base GCC/CUDA/loader compatibility.
+   The bounded artifact collector is implemented and synthetically rehearsed;
+   connect it to the live controller before tmpfs unmount. The draft waits for
+   acknowledgement within the same 30-minute deadline. Proposed filesystem and
+   artifact limits need final review; no live exporter is connected yet.
+4. Final executable workload approval, bound to current manifest/guard/reader
+   hashes and tested stop behavior. No build/start command is enabled.
 
-Important evidence: `.runtime/safety-readiness/elevation-fb0da8d4326c4053a7299605c8a280d5/admin-result.json`.
-No task/model execution should be inferred from a successful read-only probe.
+Next: validate CPU-source update behavior/reader coverage and prepare bounded CUDA
+image staging plus host/VM disk-capacity checks. The image remains unpulled;
+review/approve its concrete staging operation before downloading layers. Then
+verify compiler/tool compatibility and connect the validated real feed to the
+reviewed controller. Final build-workload approval is still separate; do not
+launch the draft or rerun previously approved policy questions.
+
+## Verified work and evidence
+
+- Branch: feature/strata-container. Earlier checkpoint 1af84a5 contains the fake
+  worker bundle flow and initial CPU-only controls. The next checkpoint includes
+  the offline build preparation, bounded artifact collector and rehearsed safety
+  controller described here. Use git log for its commit identity; no push or
+  actual build/model execution is part of this checkpoint.
+- Worker: 59 tests plus real pinned OpenCode in a capped, network-free Docker
+  fixture using scripted API replies. Selected copy -> scratch edit -> confirmed
+  removal -> bounded patch collection. Original files unchanged; no actual model.
+  See containers/worker/BUNDLE_REHEARSAL.md and OPENCODE_ACTIONS.md.
+- Proposal: 89 tests pass, including approval tampering/scope, real-shaped mock
+  frames, stale/lost feed/controller, source/builder checks and disabled preflight.
+  None of these tests validate actual sensor hardware or run a compiler.
+- Bounded artifact collector: fixed non-root tar/touch transfer, named files only,
+  exact metadata hash and ELF-header checks, per-file/wire/aggregate storage caps,
+  shared deadline, identity/lease rechecks and acknowledgement only after saving.
+  Nineteen unit tests plus two native cached-Python cases passed: 176 fake bytes
+  saved/acknowledged/exit 0; bad metadata rejected without acknowledgement.
+  Both removals confirmed. No compiler/model ran. Evidence:
+  `.runtime/artifact-export-rehearsals/2a1c94a7c3d44fa8b43febcaf68a03ce/result.json`.
+  Docker cp could not access tmpfs, so the collector uses fixed tar/touch execs.
+  Its controller connection is now exercised with synthetic data (below); real
+  CPU admission/global live state and CUDA-image compatibility remain pending.
+- Controller connection: 17 new unit tests; three separate-process Docker cases
+  passed with fixed fake files/temperatures, 0.5 CPU / 64 MiB / 16 processes,
+  no GPU/network, 64 KiB tmpfs and a ten-second worker alarm after start. Each
+  waits through the actual ten-second synthetic <=92 C baseline before starting.
+  Success: 176 bytes exported, acknowledged, exited and removed. Synthetic 97 C
+  and controller heartbeat loss: independent guard stopped/removed the worker
+  while export was blocked; first FAULT persisted and reopening was rejected.
+  Stop confirmations were 1.55 and 1.56 s from fault detection. Evidence:
+  `.runtime/offline-controller-rehearsals/89d484304f1d4241a6bbb33b1ffdb094/result.json`.
+  Clock gaps, journal failures, changed identity and daemon outages are unit-tested.
+  No sensor hardware validation, compiler/model run, pull or policy change occurred.
+- New native quota proof passed with the cached Python image only, 0.5 CPU,
+  64 MiB RAM/no extra swap, no network/GPU and a four-second alarm. It reached
+  ENOSPC at 65,536 bytes, proved read-only root and parsed the offline shell
+  script without executing it. Container removal was confirmed. Evidence:
+  `.runtime/offline-quota/27b244a65d3f4ebcb58459c9f89be342/result.json`.
+  This scaled proof does not establish real compiler fit or image compatibility.
+- Five native sleeping-worker Docker shutdown cases passed; confirmed exits
+  1.57ג€“1.62 s. Identity is pinned, Docker calls share a five-second stop budget,
+  removal is separately bounded, and unconfirmed stops stay unresolved faults.
+  No task-owned containers remain. See containers/strata-proposal/CPU_COMPARISON.md
+  and .runtime/compiler-guard/verification-c1845cf5fb9143bfbe0b45b461203cd8.json.
+- Real three-sample probe: .runtime/compiler-guard/7e30d8f6fad24e17afeff52dca1458e7.
+  The reader precision fix came afterward and passed description-only checks.
+  Reader coverage is 1,920 samples/32 minutes; default three-sample probes cannot
+  admit a build. No long hardware sampling session has been validated.
+
+Detailed policy/history: containers/strata-proposal/BUILD_POLICY_REVIEW.md.
+Do not describe these preparations as a completed Strata runtime or live supervisor.

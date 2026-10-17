@@ -14,6 +14,10 @@ ROOT = base.ROOT / '.runtime/compiler-guard'
 PACKAGE = base.ROOT / '.runtime/strata-build/1537f5ec'
 TEST_POLICY = {'mode': 'rehearsal-only', 'cpuTripC': 85, 'sampleAgeSeconds': 1.5,
                'querySeconds': 1, 'controllerLeaseSeconds': 1.5, 'deadlineSeconds': 15}
+# Owner-approved exit controls. Emergency stopping must not depend on reading
+# mutable approval/configuration files after a worker has already been admitted.
+STOP_GRACE_SECONDS = 1
+STOP_CONFIRM_SECONDS = 5
 
 
 def digest(path):
@@ -21,39 +25,51 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def plan():
-    manifest = json.loads((PACKAGE / 'build-manifest.json').read_text())
+def plan(package=None):
+    import build_policy_review as policy
+    controls = policy.load_effective_controls()
+    package = PACKAGE if package is None else Path(package).absolute()
+    base.no_links(package)
+    if package.parent != PACKAGE.parent or not re.fullmatch('[0-9a-f]{8}', package.name):
+        raise ValueError('Build package must be a prepared source-only workspace package')
+    compiler_name = 'copilot-strata-compile-' + package.name
+    manifest = json.loads((package / 'build-manifest.json').read_text())
     if manifest['buildEnabled'] is not False or manifest['modelLaunchEnabled'] is not False:
         raise ValueError('Prepared package must remain disabled')
     args = manifest['createArgs']
-    expected = ['create', '--name', 'copilot-strata-compile-1537f5ec',
+    expected = ['create', '--name', compiler_name,
                 '--label', 'local-copilot.kind=strata-compile-proposal', '--platform', 'linux/amd64',
                 '--pull=never', '--runtime', 'runc', '--cpus', '1', '--memory', '4g',
                 '--memory-swap', '4g', '--pids-limit', '128', '--restart', 'no', '--network', 'bridge',
                 '--security-opt', 'no-new-privileges', '--log-driver', 'json-file',
                 '--log-opt', 'max-size=1m', '--log-opt', 'max-file=2',
                 '--env', 'NVIDIA_VISIBLE_DEVICES=void', '--entrypoint', '/usr/bin/timeout',
-                '--mount', f'type=bind,source={PACKAGE / "input"},target=/input,readonly',
+                '--mount', f'type=bind,source={package / "input"},target=/input,readonly',
                 '--workdir', '/opt/strata',
                 'nvidia/cuda@sha256:435220c0fef35cbf712e11999f8670a83835ef3cdd18564e5e8122f83078c88c',
                 '--signal=TERM', '--kill-after=2s', '1800s', '/bin/bash', '/input/compile.sh']
     if args != expected:
         raise ValueError('Prepared compiler command differs from the reviewed guard contract')
+    if set(manifest['inputHashes']) != {'compile.sh', 'bounded_build.py'}:
+        raise ValueError('Prepared compiler must bind both build helpers')
     for name, expected in manifest['inputHashes'].items():
-        if name not in ('compile.sh', 'bounded_build.py') or digest(PACKAGE / 'input' / name) != expected:
+        if name not in ('compile.sh', 'bounded_build.py') or digest(package / 'input' / name) != expected:
             raise ValueError('Prepared build input changed')
-    return {'version': 1, 'mode': 'compiler-guard-prepared-disabled', 'package': str(PACKAGE),
-            'buildManifestSha256': digest(PACKAGE / 'build-manifest.json'),
-            'compilerName': 'copilot-strata-compile-1537f5ec', 'image': manifest['baseImage'],
+    return {'version': 1, 'mode': 'compiler-guard-prepared-disabled', 'package': str(package),
+            'buildManifestSha256': digest(package / 'build-manifest.json'),
+            'compilerName': compiler_name, 'image': manifest['baseImage'],
             'cpuQuota': 1, 'memoryBytes': 4294967296, 'swapBytes': 0, 'pids': 128,
             'buildEnabled': False, 'modelLaunchEnabled': False,
             'reader': str(Path(__file__).with_name('cpu_reader.ps1')),
             'readerSha256': digest(Path(__file__).with_name('cpu_reader.ps1')),
-            'requiredChannels': ['cpuTemperatureC', 'cpuThermalThrottling'],
+            'requiredChannels': ['cpuTemperatureC'], 'optionalChannels': ['cpuThermalThrottling'],
+            'approvedBuildTemperatureControls': controls['temperature'],
+            'unknownThrottleExceptionScope': 'cpu-only-build',
             'requiredChecks': ['valid source', 'fresh sequence and timestamp', 'bounded query',
                                'controller lease', 'exact container identity/isolation', 'approved live policy'],
             'livePolicy': None, 'rehearsalPolicy': TEST_POLICY,
             'sensorFeed': {'format': 'immutable JSON frames', 'frameBytes': 4096, 'maxFrames': 2048},
+            'exitConfirmationSeconds': STOP_CONFIRM_SECONDS, 'cleanupConfirmationSeconds': 5,
             'stopOrder': ['latch first fault', 'recheck exact container', 'SIGTERM with 1 second rehearsal grace',
                           'kill on deadline', 'confirm exit', 'collect bounded evidence', 'remove owned rehearsal'],
             'note': 'No start/build/image pull is implemented. Rehearsal limits are not a live policy.'}
@@ -160,6 +176,78 @@ def read_sample(directory, current_sequence=None):
     return sample
 
 
+class DeadlineDocker:
+    """Every Docker operation shares a deadline; failures never mean 'absent'."""
+    def __init__(self, docker, deadline, clock):
+        self.docker, self.deadline, self.clock = docker, deadline, clock
+
+    def call(self, *args, timeout=1):
+        remaining = self.deadline - self.clock()
+        if remaining <= 0:
+            raise TimeoutError('Docker confirmation deadline exhausted')
+        result = self.docker.call(*args, timeout=min(timeout, remaining))
+        if self.clock() > self.deadline:
+            raise TimeoutError('Docker operation returned after confirmation deadline')
+        return result
+
+    def inspect(self, name):
+        return base.Docker.inspect(self, name)
+
+
+def stop_target(docker, spec, expected_id, *, started=None, clock=time.monotonic, matcher=None):
+    """Bound exit confirmation to approved controls, then separately bound cleanup.
+
+    This cannot promise physical shutdown during a daemon/host failure. It
+    returns explicit unresolved status and never authorizes a new workload.
+    """
+    started = clock() if started is None else started
+    bounded = DeadlineDocker(docker, started + STOP_CONFIRM_SECONDS, clock)
+    result = {'stopConfirmed': False, 'cleanupComplete': False, 'stopFault': None}
+
+    def inspected(client):
+        info = (matcher or inspect_target)(client, spec)
+        if info is not None and info['Id'] != expected_id:
+            raise ValueError('Container ID changed; refusing control of replacement')
+        return info
+
+    try:
+        info = inspected(bounded)
+        if info is not None and info['State']['Running']:
+            try:
+                bounded.call('stop', '--timeout', str(STOP_GRACE_SECONDS), expected_id, timeout=2)
+            except Exception:
+                pass  # A lost reply is not exit confirmation; re-inspect by identity.
+            info = inspected(bounded)
+            if info is not None and info['State']['Running']:
+                bounded.call('kill', '--signal', 'KILL', expected_id)
+                info = inspected(bounded)
+        if info is not None and info['State']['Running']:
+            raise RuntimeError('Target still running')
+        result['stopConfirmed'] = True
+        result['stopSeconds'] = clock() - started
+        if info is None:
+            result['cleanupComplete'] = True
+            return result
+        result['exitCode'] = info['State']['ExitCode']
+    except Exception as error:
+        result.update(stopFault='STOP_UNCONFIRMED', stopSeconds=clock() - started,
+                      stopError=str(error)[:512])
+        return result
+
+    # The five-second rule is for confirmed exit. Removal has its own bounded
+    # phase; it must never turn a confirmed stop into falsely confirmed cleanup.
+    cleanup = DeadlineDocker(docker, clock() + 5, clock)
+    try:
+        if inspected(cleanup) is not None:
+            cleanup.call('rm', expected_id)
+        if inspected(cleanup) is not None:
+            raise RuntimeError('Removal not confirmed')
+        result['cleanupComplete'] = True
+    except Exception as error:
+        result.update(cleanupError=str(error)[:512])
+    return result
+
+
 def watch(directory, docker=None):
     directory = Path(directory).absolute()
     base.no_links(directory)
@@ -174,29 +262,35 @@ def watch(directory, docker=None):
     docker = docker or base.Docker()
     state = {'version': 1, 'mode': 'compiler-guard-disabled' if compiler else 'compiler-guard-rehearsal', 'state': 'ARMING',
              'fault': None, 'cleanupComplete': False, 'buildStarted': False, 'modelStarted': False}
+    stop_started = None
     def save():
         base.atomic(directory / 'guard-state.json', state)
     def fault(code):
+        nonlocal stop_started
+        if state['fault'] is None:
+            stop_started = time.monotonic()
         state['state'] = 'FAULT'
         state['fault'] = state['fault'] or {'code': code, 'at': base.utc()}
         save()
     with base.lock(directory / 'guard-lock'):
         if (directory / 'guard-state.json').exists():
             raise ValueError('Existing session state cannot be reset or restarted')
-        if inspect_target(docker, spec) is None:
+        target = inspect_target(docker, spec)
+        if target is None:
             raise ValueError('Target missing before admission')
-        sample = read_sample(directory)
-        error = 'BUILD_NOT_APPROVED' if compiler else reading_error(sample, time.time(), rehearsal=True)
-        if error:
-            fault(error)  # A failed preflight is never marked ARMED.
-        else:
-            state['state'] = 'ARMED'
-            save()
-        started = last_change = time.monotonic()
-        lease = (directory / 'control/heartbeat').stat().st_size
-        sequence = sample.get('sequence', 0)
-        previous_stamp = sample.get('recordedAtUnix')
+        state['containerId'] = target['Id']
         try:
+            sample = read_sample(directory)
+            error = 'BUILD_NOT_APPROVED' if compiler else reading_error(sample, time.time(), rehearsal=True)
+            if error:
+                fault(error)  # A failed preflight is never marked ARMED.
+            else:
+                state['state'] = 'ARMED'
+                save()
+            started = last_change = time.monotonic()
+            lease = (directory / 'control/heartbeat').stat().st_size
+            sequence = sample.get('sequence', 0)
+            previous_stamp = sample.get('recordedAtUnix')
             while state['fault'] is None:
                 sample = read_sample(directory, sequence)
                 error = reading_error(sample, time.time(), sequence, rehearsal=True, previous_stamp=previous_stamp)
@@ -226,25 +320,7 @@ def watch(directory, docker=None):
             except Exception:
                 pass
         finally:
-            info = inspect_target(docker, spec)
-            if info is not None:
-                if info['State']['Running']:
-                    try:
-                        docker.call('stop', '--timeout', '1', info['Id'])
-                    except Exception:
-                        pass
-                    info = inspect_target(docker, spec)
-                    if info and info['State']['Running']:
-                        docker.call('kill', '--signal', 'KILL', info['Id'])
-                        info = inspect_target(docker, spec)
-                if info is not None:
-                    if info['State']['Running']:
-                        raise RuntimeError('Target still running')
-                    state['exitCode'] = info['State']['ExitCode']
-                    docker.call('rm', info['Id'])
-            if inspect_target(docker, spec) is not None:
-                raise RuntimeError('Cleanup not verified')
-            state['cleanupComplete'] = True
+            state.update(stop_target(docker, spec, target['Id'], started=stop_started))
             save()
             base.atomic(directory / 'result.json', state)
     return state

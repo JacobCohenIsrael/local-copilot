@@ -6,15 +6,26 @@ import subprocess
 import sys
 
 
-def main():
-    root = Path('/opt/strata')
+def staged_llama(root):
+    """Missing source is a preparation fault, never permission to download it."""
+    llama = root / 'third_party/llama.cpp'
+    if (not (root / 'CMakeLists.txt').is_file() or
+            not (llama / 'ggml/CMakeLists.txt').is_file() or
+            not (llama / 'gguf-py').is_dir()):
+        raise RuntimeError('Required staged source missing; compilation will not fetch replacements')
+    return llama
+
+
+def main(root=Path('/opt/strata')):
+    llama = staged_llama(root)  # Check before importing any upstream setup code.
     sys.path.insert(0, str(root))
     import setup  # Only in a separately approved future builder, never in host tests.
     if setup.source_version() != '0.1.44.1':
         raise RuntimeError('Unexpected Strata source version')
     if setup.LLAMA_CPP_COMMIT != '3cf03257f219afbe7334045ff7c6a06ac68c627d':
         raise RuntimeError('Unexpected llama.cpp source identity')
-    llama = setup.get_llama_cpp()
+    # Do not call setup.get_llama_cpp: its missing-source fallback downloads and
+    # unpacks an archive. All source must arrive through reviewed preparation.
     nvcc, _ = setup.find_nvcc()
     cmake, ninja = setup.find_tool('cmake'), setup.find_tool('ninja')
     if not all((cmake, ninja, nvcc)):

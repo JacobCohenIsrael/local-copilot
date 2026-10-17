@@ -30,7 +30,8 @@ def verify():
     results = []
     with g.base.lock(g.ROOT / 'verification-lock'):
         for scenario, expected in [('hot', 'CPU_HOT'), ('stale', 'SENSOR_STALE'),
-                                   ('controller-lost', 'CONTROLLER_LEASE_EXPIRED'), ('cancel', 'CANCELLED')]:
+                                   ('controller-lost', 'CONTROLLER_LEASE_EXPIRED'), ('cancel', 'CANCELLED'),
+                                   ('sensor-corrupt', 'GUARD_ERROR')]:
             directory = g.ROOT / uuid.uuid4().hex
             inputs = directory / 'input'
             inputs.mkdir(parents=True)
@@ -76,6 +77,8 @@ def verify():
                     if scenario != 'stale' or elapsed < .3:
                         seq += 1
                         emit(seq, 90 if scenario == 'hot' and elapsed > .4 else 60)
+                        if scenario == 'sensor-corrupt' and elapsed > .4:
+                            g.base.atomic(directory / f'sample-{seq:08d}.json', ['invalid frame'])
                     if scenario == 'cancel' and elapsed > .4:
                         (directory / 'cancel.request').write_text('test only')
                     time.sleep(.15)
@@ -83,7 +86,8 @@ def verify():
                 if process.returncode != 0:
                     raise RuntimeError(stderr)
                 result = json.loads(stdout)
-                if result['fault']['code'] != expected or not result['cleanupComplete'] or result['exitCode'] != 137:
+                if (result['fault']['code'] != expected or not result['cleanupComplete'] or
+                        not result['stopConfirmed'] or result['stopSeconds'] > 5 or result['exitCode'] != 137):
                     raise AssertionError(result)
                 if g.inspect_target(docker, spec) is not None:
                     raise AssertionError('Owned test container remains')

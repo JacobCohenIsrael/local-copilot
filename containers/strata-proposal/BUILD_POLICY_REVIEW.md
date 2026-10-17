@@ -3,11 +3,78 @@
 **Owner approved the build-only exception and controls on 16 October 2026.
 No build is authorized or enabled.**
 
-The current guard requires a validated CPU-temperature source and CPU hardware
-thermal-throttle status. The bounded ASUS reader returns temperature candidates,
-but validation is incomplete and throttle status remains unknown. The existing
-guard therefore continues to block compilation. Another fake task rehearsal
-cannot resolve this hardware-data gap.
+## Approved thermal revision — 17 October 2026
+
+The owner asked to reconsider the temperature limits based on ordinary CPU
+workload temperatures. `thermal-revision.proposed.json` proposes **start at or
+below 92 C for ten seconds; latch FAULT and invoke stopping at or above 97 C**.
+The owner explicitly approved this numeric revision. The original 75/80 C
+controls remain as a historical snapshot; effective controls are now 92/97 C.
+`thermal-revision-approval.json` binds the unchanged revision file's normalized
+SHA256 and quotes the approval. The unknown-throttle exception remains
+CPU-build-only. Neither decision authorizes a build, image pull or model load.
+
+[Intel's exact i9-12950HX specification](https://www.intel.com/content/www/us/en/products/sku/228439/intel-core-i912950hx-processor-30m-cache-up-to-5-00-ghz/specifications.html)
+lists a 100 C maximum junction temperature. [Intel's temperature guidance](https://www.intel.com/content/www/us/en/support/articles/000005597/processors.html)
+explains that high temperature during sustained work need not indicate a fault.
+[ASUS's laptop guidance](https://rog.asus.com/sg/articles/guides/why-is-my-laptop-overheating-its-probably-not/)
+similarly says 95–100 C can occur under demanding workloads, while identifying
+unexpected shutdowns and high light-load temperatures as reasons to investigate.
+These sources support revisiting an arbitrary 80 C cutoff; they do not validate
+this laptop's sensor, diagnose the previous shutdown, or certify a 97 C
+application threshold. Sampling, source coverage and exit-confirmation delay
+mean a three-degree numeric gap is not a guaranteed physical margin.
+
+The proposed lower start threshold retains headroom before adding a compiler.
+A 94–95 C baseline would still wait; after a qualifying 92 C baseline, 94–95 C
+would not itself fault. No fan, firmware, power or performance-mode change is
+involved. All other controls and remaining build/runtime gates are unchanged.
+
+Run `python -B containers/strata-proposal/build_policy_review.py --thermal-revision`
+for the synthetic comparison. Four new tests cover the changed boundaries,
+running at 94/95/96 C, immediate fault on a 97 C sample, no start from a 95 C
+baseline, preserved missing-data failures and explicit approval binding for the
+new numbers. That command accepts no live feed and enables no workload.
+
+## Compiler readiness and refreshed package
+
+`load_effective_controls()` resolves both approvals without changing their
+historical files. The compiler plan now reports 92/97 C controls and unknown
+throttle status as optional for CPU compilation only. The legacy dummy validator
+retains its own test policy; no model-runtime telemetry rule is changed.
+
+`CpuBuildReadinessGate` accepts non-synthetic frame shapes and rejects synthetic,
+unvalidated, stale, replayed or invalid data. It uses the same baseline/hot rules
+as the rehearsal and preserves unknown throttle as null. A separate `tick`
+detects missing sensor/controller updates and clock regression. This class has
+no timers, process controls or start authority; an independent live controller
+must still drive it. Unit tests use mocked frame data, not validated hardware.
+The real reader continues to emit `validatedCpuSensor=false`.
+
+`build_preflight.py` is a read-only report of the selected build candidate,
+approval scope, exact compiler resource/command profile and helper hashes.
+It neither calls Docker nor reads sensors. It refuses altered candidate hashes
+or resources and always leaves build/model disabled.
+
+The source-only package was refreshed from the two existing, verified archives:
+`.runtime/strata-build/1c9c3253`, selected by `build-candidate.json`. Its manifest
+SHA256 is `ea5b063e3ebbacb3fea1f82d9b83f78b7502abc9d2b5bc1656514c4cbbf48804`.
+The current helper is staged, its hash matches, and a disabled guard contract
+was generated for this identity. No new archive, dependency or image was
+downloaded; no upstream source was executed. The original package `1537f5ec`
+and its approved historical manifest remain unchanged. The existing dummy
+watch CLI still targets its historical fixture; a live controller for the new
+candidate is not implemented or enabled.
+
+43 proposal tests passed. The preflight lists four blockers: CPU-source
+validation, live controller connection, dependency/disk budgets and final
+build-workload approval. There is no additional temperature approval to request.
+
+The build-only gate requires validated CPU-temperature data; hardware throttle
+status is optional under the approved exception. The bounded ASUS reader returns
+temperature candidates, but validation is incomplete and throttle stays unknown.
+The real compiler remains disabled. Another fake task rehearsal cannot resolve
+this hardware-data gap.
 
 The approved decision is to allow **unknown CPU throttle status for one capped
 CPU-only compilation**, while retaining temperature monitoring and independent
@@ -25,7 +92,7 @@ its disabled flags. Its approval hash normalizes CRLF to LF so a Git line-ending
 conversion cannot change the decision. A changed policy/manifest requires review.
 The updated reader has a new implementation hash; the report shows both old and
 current hashes and requires revalidation before the final executable manifest.
-Approved controls (still awaiting live implementation/validation):
+Original controls (historical snapshot; 75/80 C superseded by approved 92/97 C above):
 
 | Control | Candidate rule |
 | --- | --- |
@@ -77,7 +144,7 @@ independent watchdog's freshness stop. `-Describe` tests the PowerShell contract
 without CIM, administrator access or sensor reads. Long hardware runs remain
 unvalidated; the larger ceiling is not a guarantee of future liveness.
 
-## Remaining gates after a policy decision
+## Remaining gates before an approved build
 
 - Validate the CPU-temperature source's meaning and update behavior.
 - Validate the revised reader's actual coverage and scheduling, including source

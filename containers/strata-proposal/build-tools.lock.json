@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "platform": "linux-x86_64-glibc",
+  "metadataSource": "Official PyPI release JSON, read 17 October 2026",
+  "independentSignatureVerified": false,
+  "tools": [
+    {
+      "name": "cmake",
+      "version": "4.4.3",
+      "filename": "cmake-4.4.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/0b/d0/18fe62f0bddc8b9bb71ba55762ee48a224f8344101c34350d969f6e0d327/cmake-4.4.3-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "bytes": 30231983,
+      "sha256": "bae3c4954623ec4d62e62c70443f0da7988b733111c2871fcc6a31ead5137e20"
+    },
+    {
+      "name": "ninja",
+      "version": "1.13.2",
+      "filename": "ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/6e/53/ebfed7b689c338dd8ebeec9c0730c8d56821292f14e2536e5f3ef1a05744/ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "bytes": 183365,
+      "sha256": "65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c"
+    }
+  ]
+}

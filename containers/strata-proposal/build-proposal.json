@@ -52,7 +52,7 @@
   },
   "requiredBeforeBuild": [
     "Owner approval of the CPU compilation workload and exact capped-builder manifest",
-    "Validated CPU temperature and thermal-throttle provider with freshness checks",
+    "Validated CPU temperature provider with freshness checks; apply the approved CPU-only unknown-throttle exception and 92 C start / 97 C stop controls",
     "Independent watchdog adapted to the exact builder identity and tested before compiler admission",
     "Disk reserve and dependency download budget measured and approved",
     "Source/archive verification and full dependency hashes or explicit reproducibility limitations"

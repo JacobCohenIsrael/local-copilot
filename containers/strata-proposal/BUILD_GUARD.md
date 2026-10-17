@@ -1,5 +1,21 @@
 # Compiler sensor/guard connection — 16 October 2026
 
+17 October update: `CPU_COMPARISON.md` records the near-concurrent Armoury/ASUS
+check, the bounded shutdown changes, 30 unit tests and five Docker cases. Actual
+CPU readings were 95/95/94 C and block compilation under the approved limits.
+
+17 October controller update: the offline successor now has a frozen inspect
+matcher (`offline_target.py`), persistent controller/export kernel and a separate
+synthetic watchdog. Three native fake-output cases passed: complete export,
+synthetic 97 C during blocked export, and controller heartbeat loss during blocked
+export. Fault stops were confirmed in 1.55/1.56 s, with removal and restart
+rejection. See the controller section of README.md and
+`.runtime/offline-controller-rehearsals/89d484304f1d4241a6bbb33b1ffdb094/result.json`.
+There are 89 proposal unit tests. This does not enable production admission,
+validate the real CPU feed, pull/build the CUDA image or activate a policy change.
+The historical guard/fixtures below remain intact; their test thresholds do not
+replace the approved CPU-only 92 C start / 97 C stop controls.
+
 The prepared package now has a guard contract at
 `.runtime/strata-build/1537f5ec/guard-contract.json`, binding its compiler manifest
 hash, exact target name/image/arguments, read-only inputs, resource limits, and
