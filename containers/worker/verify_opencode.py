@@ -53,9 +53,20 @@ def validate(info, name, source, kind='opencode-version-only'):
         raise ValueError('CONTAINER_ENVELOPE_MISMATCH')
 
 
-def run(path, fake=False, scenario='reply'):
+def run(path, fake=False, scenario='reply', bundle_id=None):
     if scenario not in ('reply', 'edit', 'deny-shell', 'deny-external', 'deny-file-write'):
         raise ValueError('FIXED_SCENARIO_REQUIRED')
+    if bundle_id is not None:
+        if not fake or scenario != 'edit':
+            raise ValueError('BUNDLE_REQUIRES_FAKE_EDIT')
+        if task_bundle.collect(bundle_id)['changedFiles']:
+            raise ValueError('PRISTINE_BUNDLE_REQUIRED')
+        manifest = task_bundle.read_json(task_bundle.ROOT / bundle_id / 'manifest.json')
+        if (set(manifest['files']) != {'example.py'} or
+                task_bundle.bounded_read(task_bundle.ROOT / bundle_id / 'workspace/example.py') != b'VALUE = 1\n' or
+                not isinstance(manifest.get('task'), str) or
+                not 1 <= len(manifest['task']) <= task_bundle.MAX_TASK_CHARS):
+            raise ValueError('SYNTHETIC_BUNDLE_REQUIRED')
     path = artifact(path)
     RUNS.mkdir(parents=True, exist_ok=True)
     task_bundle.plain(RUNS, directory=True)
@@ -68,6 +79,11 @@ def run(path, fake=False, scenario='reply'):
     shutil.copyfile(HERE / helper, source / 'probe.py')
     if fake:
         (source / 'scenario.json').write_text(json.dumps({'scenario': scenario}), encoding='utf-8')
+        if bundle_id is not None:
+            selected = source / 'bundle-workspace'
+            selected.mkdir()
+            shutil.copyfile(task_bundle.ROOT / bundle_id / 'workspace/example.py', selected / 'example.py')
+            (source / 'bundle-task.json').write_text(json.dumps({'task': manifest['task']}), encoding='utf-8')
         for module in ('http_rehearsal.py', 'request_gate.py'):
             shutil.copyfile(HERE / module, source / module)
     libraries, runtime = stage_opencode_runtime.prepare()
@@ -86,6 +102,7 @@ def run(path, fake=False, scenario='reply'):
             '--mount', f'type=bind,source={source},target=/input,readonly',
             '--entrypoint', 'python', IMAGE, '-B', '/input/probe.py']
     receipt = {'mode': kind, 'container': name, 'image': IMAGE,
+               'bundleRunId': bundle_id,
                'binarySha256': stage.sha(source / 'opencode'), 'modelEnabled': False,
                'network': 'none', 'gpuRequested': False, 'cleanupConfirmed': False,
                'runtimeLibraries': runtime['libraries']}

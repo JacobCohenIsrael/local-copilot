@@ -1,9 +1,20 @@
 # Fixed bounded ASUS reader. No self-elevation, device writes, arbitrary endpoint or workload.
 param(
-    [Parameter(Mandatory=$true)][string]$SessionDirectory,
-    [ValidateRange(1,1800)][int]$Samples = 3
+    [string]$SessionDirectory,
+    [ValidateRange(1,1920)][int]$Samples = 3,
+    [switch]$Describe
 )
 $ErrorActionPreference = 'Stop'
+$maxDurationSeconds = 1920
+$sampleIntervalSeconds = 1
+if ($Describe) {
+    [ordered]@{ version=1; maxDurationSeconds=$maxDurationSeconds; maxSamples=1920;
+        requestedSamples=$Samples; defaultSamples=3; sampleIntervalSeconds=$sampleIntervalSeconds;
+        frameBudget=2048; sensorAccessed=$false; workloadStarted=$false;
+        validatedCpuSensor=$false; longRunValidated=$false } | ConvertTo-Json -Compress
+    return
+}
+if (-not $SessionDirectory) { throw 'SessionDirectory is required unless describing the contract' }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../.runtime/compiler-guard'))
 $directory = [IO.Path]::GetFullPath($SessionDirectory)
 if ([IO.Path]::GetDirectoryName($directory) -ne $root -or [IO.Path]::GetFileName($directory) -notmatch '^[a-f0-9]{32}$') { throw 'Invalid reader session' }
@@ -20,6 +31,7 @@ if (-not (Test-Path -LiteralPath $directory -PathType Container)) { throw 'Sessi
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 $sensor = $null
 $initialError = $null
+$sessionClock = [Diagnostics.Stopwatch]::StartNew()
 try {
     if (-not $isAdmin) { throw 'Administrator access required for the inspected ASUS source' }
     $computer = Get-CimInstance Win32_ComputerSystem -OperationTimeoutSec 2
@@ -28,8 +40,14 @@ try {
     if ($instances.Count -ne 1) { throw 'Unexpected ASUS instance count' }
     $sensor = $instances[0]
 } catch { $initialError = $_.Exception.Message }
-$sessionClock = [Diagnostics.Stopwatch]::StartNew()
-for ($sequence=1; $sequence -le $Samples -and $sessionClock.Elapsed.TotalSeconds -lt 1800; $sequence++) {
+$samplingStarted = $sessionClock.Elapsed.TotalSeconds
+$lastSampleSlot = $samplingStarted + ($Samples - 1) * $sampleIntervalSeconds
+for ($sequence=1; $sequence -le $Samples; $sequence++) {
+    # Fixed monotonic slots avoid accumulating query duration on every interval.
+    $due = $samplingStarted + ($sequence - 1) * $sampleIntervalSeconds
+    $waitMs = [math]::Ceiling(1000 * ($due - $sessionClock.Elapsed.TotalSeconds))
+    if ($waitMs -gt 0) { Start-Sleep -Milliseconds $waitMs }
+    if ($sessionClock.Elapsed.TotalSeconds -ge $maxDurationSeconds) { break }
     $clock = [Diagnostics.Stopwatch]::StartNew()
     $sample = [ordered]@{ version=1; sequence=$sequence; synthetic=$false; cpuTemperatureC=$null; cpuThermalThrottling=$null; validatedCpuSensor=$false; source='ASUS DSTS 0x00120094'; error=$null }
     try {
@@ -43,12 +61,15 @@ for ($sequence=1; $sequence -le $Samples -and $sessionClock.Elapsed.TotalSeconds
     } catch { $sample.error = $_.Exception.Message }
     $sample.querySeconds = $clock.Elapsed.TotalSeconds
     $sample.recordedAtUnix = ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() / 1000.0)
+    # Declared remaining coverage is not a liveness guarantee. Default three-sample
+    # probes must never masquerade as a full-build monitoring session.
+    $sample.readerRemainingSeconds = [math]::Max(0,
+        [math]::Min($maxDurationSeconds, $lastSampleSlot) - $sessionClock.Elapsed.TotalSeconds)
     $temporary = Join-Path $directory ('sample-' + $sequence + '.tmp')
     $json = $sample | ConvertTo-Json -Depth 4 -Compress
     [IO.File]::WriteAllText($temporary, $json)
     $target = Join-Path $directory ('sample-{0:D8}.json' -f $sequence)
     [IO.File]::Move($temporary,$target) # Immutable frames avoid Windows replace/read sharing races.
     Add-Content -LiteralPath (Join-Path $directory 'samples.jsonl') -Value $json -Encoding UTF8
-    if ($initialError) { break }
-    if ($sequence -lt $Samples) { Start-Sleep -Milliseconds 1000 }
+    if ($sample.error -or $sample.querySeconds -gt 1) { break }
 }

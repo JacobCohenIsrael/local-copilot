@@ -14,6 +14,8 @@ See `SUPERVISOR.md` for the simulation-only supervisor, `STRATA_CONTAINER_PLAN.m
 
 The owner chose to keep Strata itself in Docker. Prioritize the prepared pinned Linux compile package over Windows-engine reuse and optional diagnostics. See `NEXT_STEPS.md` for the compact checkpoint. The source-only staging is complete; compilation and model launch remain disabled.
 
+On 16 October 2026 the owner approved the CPU-only build throttle exception and reviewed controls: unknown hardware throttle status may remain null for one capped CPU-only compilation, with a 75 C/10-second start baseline and 80 C stop. See `containers/strata-proposal/build-policy-approval.json` and `BUILD_POLICY_REVIEW.md`. Do not ask again for this policy decision. It does not approve compilation/image pull, model loading, or waiving CPU-source validation, reader coverage, watchdog/stop testing, disk/download limits, or final build-workload approval. The approved draft is preserved as a historical snapshot; reader implementation hashes may differ and must be revalidated/bound into the final build package.
+
 ## Historical application goal
 
 Create a local copilot that can suggest code and provide code reviews.

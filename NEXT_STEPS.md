@@ -4,7 +4,7 @@ Owner stop rule: check the five-hour Codex allowance before substantial work
 and between bounded steps. At 5% remaining (95% consumed), save this checkpoint,
 stop any task-owned workers/containers, and pause. Leave unrelated processes
 and Docker Desktop alone. Resume on owner direction or after the allowance
-resets. The five-hour window reset; latest check: 70% remaining.
+resets. The five-hour window reset; latest check: 57% remaining.
 No task-owned workloads are running.
 
 Owner priority: reach a first bounded Strata coding task quickly and reduce
@@ -23,9 +23,11 @@ MCP, performance tuning, and the historical TypeScript/JetBrains application.
 - CPU temperature read works with administrator access through fixed ASUS DSTS
   endpoint `0x00120094`. Executed snapshot: 90 °C. Later Armoury screenshot:
   CPU 81 °C / GPU 57 °C. Not simultaneous, not a calibration or safe envelope.
-- CPU hardware thermal-throttle source remains unknown. Windows frequency
-  limits/counter metadata are advisory; do not fill the missing flag with false
-  or silently waive it. Any provisional policy change needs owner approval.
+- CPU hardware thermal-throttle source remains unknown. Owner approved the
+  CPU-only build exception and reviewed controls on 16 October 2026; the missing
+  flag stays null. Windows frequency limits remain advisory. This exception
+  does not cover model runtime or authorize compilation. Do not ask again for
+  this policy decision; see the approval record below.
 
 ## What already works
 
@@ -118,8 +120,43 @@ Internal allow rules use location-relative paths; actual tool arguments use
 path, and the command tool is shell. The proposal is corrected accordingly.
 All 51 worker tests passed. Native receipts are recorded in that report;
 all owned test containers were removed. No actual model or host project ran.
-Next connect the verified fake edit to task_bundle input/patch collection in
-one bounded command, retaining the existing safety gates and unchanged caps.
+The complete bundle path now passes in `containers/worker/bundle_rehearsal.py`:
+synthetic originals -> selected copy -> read-only worker input -> scratch edit
+-> bounded returned bytes -> confirmed removal -> host import/patch collection.
+Original selected/unselected files stayed unchanged. The native result is
+PATCH_FOR_REVIEW with a 113-byte patch, two fake calls and no OOM. All 59 worker
+tests pass (eight new bridge tests). See `containers/worker/BUNDLE_REHEARSAL.md`.
+Evidence: `.runtime/bundle-rehearsals/00b01b6a858d448686e1f5cc7049645c/result.json`.
+No original/baseline or writable host workspace is mounted; no real project,
+arbitrary task, actual tokenizer/model or live policy is enabled by this CLI.
+The concrete CPU-only policy review is now in
+`containers/strata-proposal/BUILD_POLICY_REVIEW.md` and `build-policy.draft.json`.
+The owner APPROVED the exception allowing unknown hardware throttle status for
+one CPU-only compile, never model runtime. Reviewed start <=75 C for 10 seconds,
+stop >=80 C, one CPU/4 GiB/no GPU, 30 minutes, no retry; these are restrictive
+review values, not certified safe limits. The decision is hash-bound in
+`build-policy-approval.json`, quoting the owner's reply. It is controls-only,
+not workload approval. The original draft remains unchanged as a historical
+snapshot. Existing `build_guard.py` rejects all actual builds; no live policy
+was enabled. Its legacy sample validator still requires a throttle flag.
+`build_policy_review.py` accepts synthetic observations only and now reports
+POLICY_APPROVED_BUILD_BLOCKED, preserving unknown as null. Policy/manifest
+changes invalidate the approval binding; reader changes are explicitly reported
+for revalidation. Five additional tests pass (23 proposal tests total), including
+three real PowerShell -Describe checks outside the sandbox, without sensor reads.
+The reader's former timing gap is addressed in code: 1,920 samples/32 minutes,
+fixed monotonic slots, remaining coverage and early exit on query failure/overrun.
+The three-sample default stays unchanged. Short probes cannot admit a build;
+simulation requires enough remaining reader time for the full build plus stop,
+subtracting sample age. No long hardware run or real stop-latency proof occurred.
+Next validate source meaning/update behavior and the revised reader, then wire
+and test the live controller/stop deadlines. Source validation, actual coverage,
+controller/stop deadlines, disk/download
+budgets and final build workload approval remain outstanding. Do not read an
+approval of the exception as approval to start compilation or load a model.
+Keep build/model launch disabled
+until those gates and explicit approvals are satisfied; avoid more optional
+dummy infrastructure, MCP or UI work.
 Strata engine build/admission, live tokenizer, durable FAULT/watchdog and
 real coding-task integration remain gated. Keep each diff focused.
 Do not describe either route as ready for immediate model use.

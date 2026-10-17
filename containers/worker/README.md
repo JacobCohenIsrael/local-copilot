@@ -14,6 +14,9 @@ The [file action checks](OPENCODE_ACTIONS.md) add a real CLI edit of a synthetic
 file and blocked shell/external/unlisted-file requests. Title generation is
 disabled in the proposal; file permission resources use verified relative
 paths. All 51 worker tests pass. Strata remains off.
+The [complete bundle rehearsal](BUNDLE_REHEARSAL.md) now connects task selection,
+the fake-only Docker worker and host-side patch collection in one command.
+The original files stayed unchanged; all 59 worker tests pass.
 
 `task_bundle.py` prepares a disposable copy of explicitly named UTF-8 files and
 collects a bounded patch for cloud review. It has no process launcher, Docker

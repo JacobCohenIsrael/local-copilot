@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import signal
 import difflib
+import base64
 
 from http_rehearsal import Rehearsal, body_length, close_writer, headers
 from request_gate import RequestGate
@@ -90,7 +91,21 @@ async def run():
     workspace = Path('/tmp/workspace')
     workspace.mkdir(parents=True)
     example = workspace / 'example.py'
-    example.write_text('VALUE = 1\n')
+    bundle_input = Path('/input/bundle-workspace')
+    bundled = bundle_input.is_dir()
+    task = 'Only change example.py from VALUE = 1 to VALUE = 2. Do not run commands or access other files.'
+    if bundled:
+        if {p.name for p in bundle_input.iterdir()} != {'example.py'}:
+            raise ValueError('SYNTHETIC_BUNDLE_REQUIRED')
+        content = (bundle_input / 'example.py').read_bytes()
+        if content != b'VALUE = 1\n':
+            raise ValueError('SYNTHETIC_BUNDLE_REQUIRED')
+        task = json.loads(Path('/input/bundle-task.json').read_text())['task']
+        if not isinstance(task, str) or not 1 <= len(task) <= 4000:
+            raise ValueError('INVALID_BUNDLE_TASK')
+        example.write_bytes(content)
+    else:
+        example.write_text('VALUE = 1\n')
     outside = Path('/tmp/outside/private.txt')
     outside.parent.mkdir()
     outside.write_text('FAKE-PRIVATE-CONTENT-9371\n')
@@ -122,7 +137,7 @@ async def run():
                    'OPENCODE_DISABLE_AUTOCOMPACT', 'OPENCODE_DISABLE_CLAUDE_CODE')})
         process = await asyncio.create_subprocess_exec('/input/opencode', 'run', '--standalone', '--format', 'json',
                   '--model', 'strata/synthetic-coder', '--agent', 'bounded',
-                  'Only change example.py from VALUE = 1 to VALUE = 2. Do not run commands or access other files.',
+                  task,
                   env=env, cwd=workspace,
                   stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         timed_out = False
@@ -140,6 +155,10 @@ async def run():
     feedback = '\n'.join(session.feedback)
     denied = denial_kind(session.feedback, scenario)
     changed = example.read_text() != 'VALUE = 1\n'
+    with example.open('rb') as exported:
+        output = exported.read(65537)
+    if len(output) > 65536:
+        raise ValueError('EXPORTED_FILE_TOO_LARGE')
     scenario_passed = {'reply': not changed and session.fake_requests == 1,
                       'edit': example.read_text() == 'VALUE = 2\n',
                       'deny-shell': denied is not None and not changed and
@@ -149,6 +168,8 @@ async def run():
                                          not (workspace / 'other.py').exists()}[scenario]
     return {'mode': 'opencode-fake-only', 'exitCode': process.returncode, 'timedOut': timed_out,
             'scenario': scenario, 'scenarioPassed': scenario_passed,
+            'bundleInputUsed': bundled,
+            'outputFiles': {'example.py': base64.b64encode(output).decode('ascii')} if bundled else {},
             'stdout': stdout, 'stderr': stderr, 'requestFields': request_fields,
             'requestSummaries': getattr(session.gate, 'request_summaries', []), 'toolFeedback': feedback[:1024],
             'forbiddenMarkerCreated': Path('/tmp/forbidden-shell-marker').exists(),

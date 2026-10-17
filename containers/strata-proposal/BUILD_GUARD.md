@@ -15,10 +15,16 @@ sharing race observed with replacement of a file another process was reading.
 After initial discovery the guard checks successive frame names rather than
 rescanning history. Each frame is capped at 4 KiB; a session at 2,048 frames.
 
-The reader defaults to three samples, has a hard request ceiling of 1,800 samples
-and approximately 30 minutes, and uses two-second query timeouts. It has no
+The reader defaults to three samples. Following approval of the build-only
+exception it has a hard request ceiling of 1,920 samples and 32 minutes, fixed
+monotonic sample slots and declared remaining coverage. It uses two-second CIM
+timeouts and exits after a returned query exceeds the approved one-second limit.
+The independent guard must still stop work on stale data if a query hangs. It has no
 self-elevation, arbitrary vendor endpoint, installer or device-writing method.
 Only the three-sample run was exercised; long-run behavior remains unvalidated.
+The historical saved contract predates that reader update; `build_guard.py`
+reports the new reader hash. Rebind and validate it before any future build.
+See `BUILD_POLICY_REVIEW.md` for the approval record and coverage tests.
 
 ## Results
 
@@ -44,11 +50,13 @@ an approved live build policy. Actual compiler admission returns
 `BUILD_NOT_APPROVED`; there is no start/build command, live-enable flag,
 automatic reset or policy-approval authority in this module.
 
-CPU hardware throttle status, sensor meaning/freshness validation, approved
+CPU hardware throttle status remains unknown. The owner approved that exception
+for CPU-only compilation on 16 October 2026; do not request that decision again.
+Sensor meaning/freshness validation and implementation/validation of the approved
 live deadlines and monitor/watchdog failure behavior remain unresolved. The
 real compiler matcher was tested against mocked inspection data; only the
-Python stand-in ran in Docker. Before compilation, satisfy these gates or
-obtain explicit owner approval of a concrete revised CPU-only build policy.
+Python stand-in ran in Docker. Before compilation, satisfy the remaining gates
+and obtain approval of the final executable build manifest/workload.
 Do not silently waive a channel or substitute OS frequency limits. Model
 loading requires separate approval. Existing installation, driver, firmware,
 fan and power settings remain unchanged.

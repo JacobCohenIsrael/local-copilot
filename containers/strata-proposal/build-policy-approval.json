@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "owner-approved-controls-only",
+  "recordedOn": "2026-10-16",
+  "ownerMessage": "Very well let's go with that exception.",
+  "approvedDraftSha256": "3e036ca24ee01c7ab565b773e5d988ed195088ad59a06da258c43c8e708dd010",
+  "hashNormalization": "UTF-8 bytes with CRLF normalized to LF",
+  "scope": "one-cpu-only-linux-compile-no-engine-execution",
+  "approved": [
+    "Unknown CPU thermal-throttle status for CPU-only compilation; never assert false",
+    "The temperature, resource, monitoring and stop controls in the referenced draft"
+  ],
+  "notAuthorized": [
+    "Compilation or image pull",
+    "Model loading, inference or GPU workloads",
+    "Waiving temperature source validation or other admission gates"
+  ],
+  "buildEnabled": false,
+  "modelLaunchEnabled": false
+}
