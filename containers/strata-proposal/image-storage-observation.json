@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "status": "observation-only-not-approval",
+  "sessionId": "348333bf6a0947dcad05b7725dfbfae1",
+  "receiptSha256": "d48988412db97e03ef1f76b1008ad8db168ae2a19cac9b05c808e1764103be05",
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false
+}

@@ -10,6 +10,7 @@ import artifact_export as export
 import build_guard as guard
 import build_preflight
 import controller_session as controller
+import cpu_feed
 import offline_target
 import verify_artifact_export as fixture
 
@@ -74,20 +75,17 @@ def watch(directory):
     with guard.base.lock(namespace / 'guard-lock'):
         if frozen.inspect(docker) is None:
             raise ValueError('Synthetic worker missing before admission')
-        session = controller.Session(namespace, directory, frozen, docker)
-        sequence = 0
+        monitor = cpu_feed.Monitor(cpu_feed.Feed(directory, synthetic=True))
+        session = controller.Session(namespace, directory, frozen, docker, monitor=monitor)
         lease = controller.Pulse(directory / 'controller.pulse')
         try:
             while session.state['phase'] not in ('FAULT', 'COMPLETE'):
-                sample = guard.read_sample(directory, sequence or None)
-                new = sample['sequence'] > sequence
-                sequence = sample['sequence']
                 done = directory / 'export.result.json'
                 exported = controller.read_json(done)['directory'] if done.exists() else None
                 if (directory / 'export.failure').exists():
                     session.fail('EXPORT_FAILED')
                     break
-                session.poll(sample if new else None, controller_age=lease.age(),
+                session.poll(controller_age=lease.age(),
                              cancelled=(directory / 'cancel.request').exists(),
                              export_requested=(directory / 'export.request').exists(), export_directory=exported)
                 if session.state['phase'] not in ('FAULT', 'COMPLETE'):

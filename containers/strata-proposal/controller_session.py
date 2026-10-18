@@ -1,4 +1,4 @@
-"""Controller/export connection, enabled only for fixed synthetic rehearsals.
+"""Controller/export connection; live builds require a bound one-attempt permit.
 
 No container creation/start command, hardware reader, reset or live-build CLI.
 The separate watchdog process calls poll even while the exporter is blocked.
@@ -29,14 +29,17 @@ class RehearsalGate(policy.CpuBuildReadinessGate):
 
 class Pulse:
     """Monotonic receipt-time lease; filesystem modification time is not trusted."""
-    def __init__(self, path, *, clock=time.monotonic):
+    def __init__(self, path, *, clock=time.monotonic, maximum=1024):
+        if type(maximum) is not int or not 1 <= maximum <= 4096:
+            raise ValueError('Bounded controller pulse required')
         self.path, self.clock = path, clock
         self.size, self.changed, self.last = 0, False, clock()
+        self.maximum = maximum
 
     def age(self):
         export.tools.plain(self.path)
         size, now = self.path.stat().st_size, self.clock()
-        if not 0 < size <= 1024 or size < self.size or now < self.last:
+        if not policy.finite(now) or not 0 < size <= self.maximum or size < self.size or now < self.last:
             raise ValueError('Controller pulse invalid/regressed')
         if self.size and size > self.size:
             self.changed = True
@@ -45,10 +48,22 @@ class Pulse:
         return now - self.last
 
 
-def pulse(path):
+def pulse(path, *, maximum=1024):
+    if type(maximum) is not int or not 1 <= maximum <= 4096:
+        raise ValueError('Bounded controller pulse required')
     export.tools.plain(path)
+    if not path.exists():
+        # Publish a complete first byte. Exposing an empty newly-created file
+        # makes a concurrent lease check fail before the first append completes.
+        temporary = path.with_name(path.name + '.initial')
+        export.tools.plain(temporary)
+        with temporary.open('xb') as stream:
+            stream.write(b'.')
+            stream.flush()
+        temporary.rename(path)  # Windows rename never replaces an existing pulse.
+        return
     with path.open('ab') as stream:
-        if stream.tell() >= 1024:
+        if stream.tell() >= maximum:
             raise ValueError('Rehearsal heartbeat budget exceeded')
         stream.write(b'.')
         stream.flush()
@@ -56,14 +71,22 @@ def pulse(path):
 
 class Session:
     """Single-writer kernel; caller holds namespace/guard-lock for its lifetime."""
-    def __init__(self, namespace, directory, target, docker, *, clock=time.monotonic, unix=time.time):
+    def __init__(self, namespace, directory, target, docker, *, clock=time.monotonic, unix=time.time, monitor=None, permit=None):
         if not target.synthetic:
-            raise ValueError('Live build controller remains disabled')
+            from build_admission import Permit
+            if not isinstance(permit, Permit):
+                raise ValueError('Live build controller remains disabled without approved admission')
+            permit.target(target, namespace)
+            if monitor is None or monitor.feed.source_permit != permit:
+                raise ValueError('Live build requires its permitted source monitor')
+        self.permit = permit
         self.namespace, self.directory = Path(namespace), Path(directory)
         self.target, self.docker, self.clock, self.unix = target, docker, clock, unix
         self.file = self.namespace / 'state.json'
         export.tools.plain(self.namespace)
         if self.file.exists():
+            if not target.synthetic:
+                raise ValueError('First-build attempt already consumed; no restart/reset')
             previous = read_json(self.file)
             if (previous.get('version') != 1 or previous.get('mode') != 'synthetic-controller-only' or
                     previous.get('synthetic') is not True or previous.get('buildEnabled') is not False or
@@ -71,13 +94,21 @@ class Session:
                     previous.get('phase') != 'COMPLETE' or previous.get('fault') is not None or
                     previous.get('cleanupComplete') is not True or previous.get('stopConfirmed') is not True):
                 raise ValueError('Latched fault or unresolved session: no automatic restart/reset')
-        self.gate, self.started = RehearsalGate(), clock()
+        if monitor is not None and (monitor.feed.synthetic is not target.synthetic or
+                                    (target.synthetic and monitor.feed.directory != Path(directory))):
+            raise ValueError('Controller feed identity/provenance mismatch')
+        self.monitor = monitor
+        self.gate = monitor.gate if monitor is not None else RehearsalGate()
+        self.started = monitor.started if monitor is not None else clock()
         self.last_clocks = (self.started, unix())
         self.state = {'version': 1, 'mode': 'synthetic-controller-only', 'sessionId': directory.name,
                       'phase': 'WAITING_BASELINE', 'fault': None, 'containerId': target.container_id,
                       'planSha256': target.plan_sha256, 'metadataSha256': target.metadata_sha256,
-                      'synthetic': True, 'buildEnabled': False, 'modelLaunchEnabled': False,
+                      'synthetic': target.synthetic, 'buildEnabled': not target.synthetic, 'modelLaunchEnabled': False,
                       'stopConfirmed': False, 'cleanupComplete': False}
+        if permit is not None:
+            self.state.update(mode='one-approved-cpu-build', reviewSha256=permit.review_sha256,
+                              sourceQualification=permit.packet['sourceReviewSha256'])
         self._save()
 
     def _save(self):
@@ -111,7 +142,7 @@ class Session:
             raise ValueError('Export receipt outside owned namespace')
         receipt = read_json(directory / 'result.json')
         if (receipt.get('state') != 'ARTIFACTS_SAVED_ACK_SENT' or receipt.get('acknowledged') is not True or
-                receipt.get('synthetic') is not True or receipt.get('containerId') != self.target.container_id or
+                receipt.get('synthetic') is not self.target.synthetic or receipt.get('containerId') != self.target.container_id or
                 receipt.get('planSha256') != self.target.plan_sha256 or
                 receipt.get('metadataSha256') != self.target.metadata_sha256 or
                 receipt.get('buildEnabled') is not False or receipt.get('modelLaunchEnabled') is not False):
@@ -130,7 +161,11 @@ class Session:
                     self.gate.draft['temperature']['maxSampleAgeSeconds']):
                 return self.fail('CLOCK_DISCONTINUITY')
             self.last_clocks = (now, unix)
-            if sample is not None:
+            if self.monitor is not None:
+                if sample is not None:
+                    return self.fail('DUPLICATE_SENSOR_SOURCE')
+                observation = self.monitor.poll(controller_age=controller_age, cancelled=cancelled)
+            elif sample is not None:
                 observation = self.gate.observe(sample, elapsed=elapsed, unix=unix,
                                                 controller_age=controller_age, cancelled=cancelled)
             elif cancelled:
@@ -139,8 +174,11 @@ class Session:
                 observation = self.gate.tick(elapsed=elapsed, unix=unix, controller_age=controller_age)
             if observation['fault']:
                 return self.fail(observation['fault'])
-            if elapsed > 35:  # Rehearsal-only outer cap, never the real build budget.
-                return self.fail('REHEARSAL_DEADLINE')
+            outer = 35 if self.target.synthetic else self.permit.packet['outerSeconds']
+            if elapsed > outer:
+                return self.fail('REHEARSAL_DEADLINE' if self.target.synthetic else 'BUILD_SESSION_DEADLINE')
+            if not self.target.synthetic and self.state['phase'] == 'WAITING_BASELINE' and elapsed > self.permit.packet['admissionWaitSeconds']:
+                return self.fail('ADMISSION_BASELINE_TIMEOUT')
             info = self.target.inspect(guard.DeadlineDocker(self.docker, self.clock() + 1, self.clock))
             if info is None:
                 return self.fail('WORKER_MISSING')
@@ -179,9 +217,13 @@ class Session:
 
 class GuardedExport:
     """The collector can proceed only with a fresh independent watchdog lease."""
-    def __init__(self, namespace, target, docker, lease):
+    def __init__(self, namespace, target, docker, lease, *, permit=None):
         if not target.synthetic:
-            raise ValueError('Live export remains disabled')
+            from build_admission import Permit
+            if not isinstance(permit, Permit):
+                raise ValueError('Live export remains disabled without approved admission')
+            permit.target(target, namespace)
+        self.permit = permit
         self.namespace, self.target, self.docker, self.lease = Path(namespace), target, docker, lease
 
     def verify(self):
@@ -189,10 +231,12 @@ class GuardedExport:
         if (state.get('phase') != 'EXPORTING' or state.get('fault') is not None or
                 state.get('containerId') != self.target.container_id or
                 state.get('planSha256') != self.target.plan_sha256 or
-                state.get('synthetic') is not True or state.get('buildEnabled') is not False or
+                state.get('synthetic') is not self.target.synthetic or state.get('buildEnabled') is not (not self.target.synthetic) or
                 state.get('modelLaunchEnabled') is not False or
                 self.lease.age() > 2.5 or not self.lease.changed):
             raise ValueError('Independent watchdog is faulted, stale or not exporting')
+        if self.permit is not None and state.get('reviewSha256') != self.permit.review_sha256:
+            raise ValueError('Export review identity changed')
         info = self.target.inspect(guard.DeadlineDocker(self.docker, self.lease.clock() + 1, self.lease.clock))
         # The inspect RPC may have taken time while the guard tripped/died.
         after = read_json(self.namespace / 'state.json')

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "status": "owner-approved-temporary-wsl2-policy",
+  "ownerMessage": "Approved. Apply the temporary WSL2 limits of 1 CPU, 6 GiB RAM and no swap, restart Docker/WSL, and verify the limits. Then continue preparing the next step.",
+  "proposalFile": "wsl-build-limits.proposed",
+  "proposalSha256": "acb3b77283695020316e28498f0ba08440de05b3907c945f7006c756ed1314de",
+  "scope": "global-wsl2-temporary-resource-limits-and-docker-wsl-restart",
+  "logicalProcessors": 1,
+  "memoryBytes": 6442450944,
+  "swapBytes": 0,
+  "preservePriorConfiguration": true,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "buildEnabled": false,
+  "modelLaunchEnabled": false
+}

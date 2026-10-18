@@ -15,6 +15,7 @@ def offline_summary():
     if not pointer.exists():
         return {'status': 'NOT_PREPARED', 'buildEnabled': False}
     import offline_build_plan
+    import image_plan
     candidate = json.loads(pointer.read_text())
     if (candidate.get('version') != 1 or candidate.get('status') != 'proposal-not-approved' or
             not isinstance(candidate.get('sessionId'), str) or not re.fullmatch('[0-9a-f]{32}', candidate['sessionId']) or
@@ -27,16 +28,19 @@ def offline_summary():
             'rootReadOnly': plan['rootReadOnly'], 'mutableFilesystems': plan['mutableFilesystems'],
             'toolDownloadBytes': plan['lockedToolDownloadBytes'], 'toolExpandedBytes': plan['toolExpandedBytes'],
             'fullToolTreeRecheckBeforeStartRequired': True,
-            'imageCompatibilityVerified': False, 'artifactExporterConnected': False,
+            'imageCompatibilityVerified': False, 'artifactExporterConnected': True,
             'artifactCollector': {'implementation': 'artifact_export.collect',
-                                  'liveControllerConnected': False,
+                                  'liveControllerConnected': True,
                                   'startAuthority': False},
             'controllerIntegration': {
-                'status': 'SYNTHETIC_REHEARSAL_ONLY', 'startAuthority': False,
-                'liveCpuFeedConnected': False,
+                'status': 'IMPLEMENTED_APPROVAL_GATED', 'startAuthority': False,
+                'liveCpuFeedConnected': True, 'liveCpuFeedActive': False,
+                'cpuFeedAdapter': 'cpu_feed.Monitor: source acceptance and exact first-build permit required',
                 'helperSha256': {name: build_guard.digest(HERE / name) for name in (
                     'offline_target.py', 'controller_session.py', 'controller_rehearsal.py',
-                    'artifact_export.py', 'build_guard.py')}},
+                    'artifact_export.py', 'build_guard.py', 'cpu_feed.py', 'windows_job.py',
+                    'build_admission.py', 'first_build.py', 'cpu_source_review.py')}},
+            'cudaImagePreparation': image_plan.report(),
             'buildEnabled': False, 'remainingGates': plan['remainingGates']}
 
 
@@ -69,8 +73,10 @@ def report():
         blockers.append('BUILD_PACKAGE_OUTDATED')
     # No evidence for these gates has been validated or authorized. This report
     # cannot promote an observation/config field into approval or start authority.
-    blockers.extend(['CPU_SOURCE_VALIDATION_PENDING', 'LIVE_CONTROLLER_NOT_CONNECTED',
-                     'DEPENDENCY_AND_DISK_BUDGETS_PENDING', 'FINAL_BUILD_WORKLOAD_NOT_APPROVED'])
+    blockers.extend(['CPU_SOURCE_ACCEPTANCE_PENDING', 'CUDA_IMAGE_PREPARATION_AND_READINESS_REQUIRED',
+                     'FINAL_BUILD_WORKLOAD_NOT_APPROVED'])
+    import cpu_source_review
+    import build_admission
     return {'version': 1, 'status': 'BUILD_BLOCKED',
             'buildEnabled': False, 'modelLaunchEnabled': False,
             'approvedCpuControls': controls['temperature'],
@@ -79,6 +85,8 @@ def report():
             'candidatePackage': str(package), 'finalWorkloadApproved': False,
             'readerSha256': contract['readerSha256'], 'helpers': helpers,
             'blockers': blockers,
+            'cpuSourceReview': cpu_source_review.report(),
+            'firstBuildAdmission': build_admission.summary(),
             'thermalReadinessGate': 'build_policy_review.CpuBuildReadinessGate',
             'thermalGateIsStartAuthority': False,
             'historicalNetworkedRecipeIsExecutionCandidate': False,

@@ -28,7 +28,8 @@ if [ -f /work/build/libstrata_kq.so ]; then
     cp /work/build/libstrata_kq.so /work/engine/libstrata_kq.so
 fi
 cp /input/BUILD.json /work/engine/BUILD.json
-printf '{"state":"BUILD_COMPLETE_AWAITING_EXPORT","modelStarted":false}\n' > /work/ready.json
+printf '{"state":"BUILD_COMPLETE_AWAITING_EXPORT","modelStarted":false}\n' > /work/ready.tmp
+mv /work/ready.tmp /work/ready.json
 # tmpfs vanishes at stop. A future bounded exporter must collect engine artifacts
 # before acknowledging completion. The outer 1800-second timeout still applies.
 while [ ! -f /work/export.complete ]; do sleep 1; done

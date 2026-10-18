@@ -17,9 +17,11 @@ The referenced conversation exposed assistant-message placeholders, not the full
 
 ## Run the simulator
 
-From the Local Copilot repository, with its existing dependencies installed:
+The Node package is retained only for this Strata lifecycle simulator. From the
+repository, install the locked development dependencies, then build and run it:
 
 ```powershell
+npm ci
 npm run build
 node dist/src/supervisor-cli.js plan --task examples/supervisor/task.json
 node dist/src/supervisor-cli.js simulate --task examples/supervisor/task.json
@@ -158,6 +160,7 @@ npm run typecheck
 npm test
 ```
 
-The existing tests use local API stubs and temporary Git repositories. The new supervisor tests use synthetic telemetry and temporary state directories. Do not run `npm run demo` as part of this phase: that existing command requests real inference from the earlier model setup.
+The supervisor tests use synthetic telemetry and temporary state directories.
+The retired Ollama assistant tests and real-inference demo have been removed.
 
 The supervisor suite covers all built-in scenarios, cross-process CLI latch/reset behavior, file/path and context limits, token/tool/failure limits, invalid counters and sensor data, startup/shutdown monitoring, orphan locks, interrupted/corrupt state, policy fingerprint changes, persistence failures, and failed reset auditing. The simulation cancellation fixture exercises the decision path; live process signals and watchdog timing remain deferred.

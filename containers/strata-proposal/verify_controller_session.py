@@ -14,7 +14,7 @@ import controller_rehearsal as rehearsal
 import controller_session as controller
 
 
-def verify():
+def verify(*, cancelled=lambda: False):
     suite = rehearsal.ROOT / uuid.uuid4().hex
     suite.mkdir(parents=True)
     result = {'version': 1, 'passed': False, 'synthetic': True, 'compilerStarted': False,
@@ -23,6 +23,8 @@ def verify():
     docker.call('image', 'inspect', guard.base.IMAGE)
     try:
         for scenario in ('success', 'cpu-hot-during-export', 'controller-lease-lost'):
+            if cancelled():
+                raise ValueError('CANCELLED')
             namespace = suite / uuid.uuid4().hex
             directory = namespace / 'sessions' / uuid.uuid4().hex
             inputs = directory / 'input'
@@ -56,6 +58,8 @@ def verify():
                     lease = controller.Pulse(directory / 'guard.pulse')
                     end, started, requested, recorded = time.monotonic() + 32, False, False, False
                     while time.monotonic() < end:
+                        if cancelled():
+                            raise ValueError('CANCELLED')
                         now = time.monotonic()
                         if now >= next_frame:
                             publish(97 if scenario == 'cpu-hot-during-export' and blocked.is_set() else 92)
@@ -153,7 +157,9 @@ def verify():
                     row['fallbackStop'] = guard.stop_target(docker, {}, owned_id, matcher=frozen.matcher)
                 if frozen is not None:
                     row['cleanupComplete'] = frozen.inspect(docker) is None
-                guard.base.atomic(suite / 'result.json', result)
+                # Immutable progress receipts avoid replacing the same Windows
+                # file immediately before publishing the final suite result.
+                guard.base.atomic(suite / ('case-' + str(len(result['cases'])) + '.json'), row)
             print(json.dumps(row), flush=True)
         result['passed'] = all(row['passed'] and row['cleanupComplete'] for row in result['cases'])
     finally:

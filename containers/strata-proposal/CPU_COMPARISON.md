@@ -1,5 +1,41 @@
 # CPU comparison and bounded shutdown — 17 October 2026
 
+Historical checkpoint: the 75/80 C values below were superseded by the owner's
+approved 92 C start / 97 C stop CPU-build revision. See NEXT_STEPS.md and the
+hash-bound thermal approval; do not reapply these historical thresholds.
+
+## Updated passive comparison through the supervised reader
+
+The owner requested a retry of the canceled Windows administrator launch and
+approved the new prompt. The hash-checked helper exited with code 0. The fixed
+reader returned ten real samples numbered 1-10 over 8.996 seconds:
+95,87,81,77,74,75,75,78,75,78 C. Intervals were 0.974-1.020 s and returned
+query times 7.69-31.35 ms. No query error occurred, and the reader stopped.
+Evidence: `.runtime/compiler-guard/99766c3642bd4773af3121e5595e3631/probe-result.json`.
+Launch/source hashes: `.runtime/compiler-guard/43b26afc371048e6b5c4fc8e9f63b1d4/`.
+Reader SHA256: `e8a3db7155b4ef177344d12bc1326f02f5da16ea9bab0a71066a97bb0c67b90d`.
+
+The owner then reported Armoury CPU readings **78,73,67,82,93,95 C**. The two
+ranges overlap and both vary, supporting the candidate reading's plausibility.
+They are not paired timestamped readings and establish neither a fixed offset
+nor exact agreement. The short observation shows changing source values and
+reader delivery; it cannot establish a worst-case firmware update bound or
+sustained monitoring guarantee. The passive/manual comparison step is complete;
+repeat it only if new evidence exposes a discrepancy.
+
+Independent implementation corroboration: G-Helper's
+[AsusACPI.cs](https://github.com/seerge/g-helper/blob/main/app/AsusACPI.cs),
+reviewed 17 October 2026, names `0x00120094` as `Temp_CPU` and decodes
+`DeviceGet` through DSTS with 65536 subtracted. This supports the chosen endpoint
+and decoding; it is third-party implementation evidence, not an ASUS calibration
+or firmware timing specification. No G-Helper code was installed or executed.
+
+Carry this evidence into CPU-source/build admission review. The reader still
+emits validatedCpuSensor=false and hardware throttle=null. No policy activation,
+image staging, build, engine, model, GPU load or device-setting change occurred.
+The ten-sample probe is not the ten-second cool admission baseline. The remainder
+of this file records the earlier checkpoint.
+
 The owner reported Armoury Crate CPU temperature **90–95 °C** during this check.
 A hash-checked administrator probe then collected **95, 95, 94 °C** through the
 fixed ASUS CPU status endpoint and exited after three samples. No settings or

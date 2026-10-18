@@ -52,6 +52,8 @@ class Target:
             m['Type'] == 'tmpfs' and m['Destination'] in expected['host']['Tmpfs']) for m in info['Mounts'])
         if not all((
                 info['Id'] == self.container_id, info['Name'] == '/' + expected['name'],
+                'imageId' not in expected or info.get('Image') == expected['imageId'] or
+                (expected.get('alternateImageId') is not None and info.get('Image') == expected['alternateImageId']),
                 config['Image'] == expected['image'], config['User'] == '65532:65532',
                 config['Entrypoint'] == expected['entrypoint'], config['Cmd'] == expected['command'],
                 config['WorkingDir'] == '/work', 'NVIDIA_VISIBLE_DEVICES=void' in config.get('Env', []),
@@ -76,8 +78,11 @@ def from_proposal(directory, plan_sha256, container_id):
     plan = offline.checked_proposal(directory, plan_sha256)
     source = Path(plan['sourcePackage']) / 'input/source'
     args = plan['createArgs']
+    import image_plan
     contract = {'name': args[args.index('--name') + 1],
                 'image': args[args.index('--entrypoint') + 2],
+                'imageId': image_plan.metadata()['configDigest'],
+                'alternateImageId': image_plan.metadata()['image'].split('@', 1)[1],
                 'entrypoint': ['/usr/bin/timeout'],
                 'command': ['--signal=TERM', '--kill-after=2s', '1800s', '/bin/bash', '/input/compile_offline.sh'],
                 'labels': {'local-copilot.kind': 'offline-strata-build-proposal'},

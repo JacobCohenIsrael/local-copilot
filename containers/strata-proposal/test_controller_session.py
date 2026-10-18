@@ -84,6 +84,32 @@ class ControllerSessionTests(unittest.TestCase):
     def frame(self, temperature=92):
         return policy.synthetic(int(self.clock() * 1000) + 1, self.clock(), cpuTemperatureC=temperature)
 
+    def test_first_heartbeat_is_visible_only_after_its_byte_is_complete(self):
+        target=self.directory/'atomic.pulse'
+        original=Path.rename
+        def rename(source,destination):
+            self.assertEqual(source.read_bytes(),b'.')
+            self.assertFalse(target.exists())
+            self.assertEqual(destination,target)
+            return original(source,destination)
+        with patch.object(Path,'rename',rename):
+            controller.pulse(target)
+        self.assertEqual(target.read_bytes(),b'.')
+        lease=controller.Pulse(target,clock=self.clock)
+        self.assertEqual(lease.age(),0)
+        self.clock.value=1
+        controller.pulse(target)
+        self.assertEqual(lease.age(),0)
+        self.assertEqual(target.read_bytes(),b'..')
+
+    def test_empty_existing_heartbeat_still_fails_instead_of_refreshing_lease(self):
+        target=self.directory/'invalid.pulse'
+        target.write_bytes(b'')
+        lease=controller.Pulse(target,clock=self.clock)
+        with self.assertRaisesRegex(ValueError,'invalid/regressed'):
+            lease.age()
+        self.assertEqual(target.read_bytes(),b'')
+
     def exporting(self):
         for second in range(11):
             self.clock.value = second

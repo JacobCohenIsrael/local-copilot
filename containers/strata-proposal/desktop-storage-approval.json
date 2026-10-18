@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "status": "owner-approved-normal-desktop-storage-for-first-test",
+  "ownerMessage": "Use normal Docker storage for the first test (Recommended)",
+  "approvedAtUtc": "2026-10-18T05:59:30.188371+00:00",
+  "useNormalDesktopStorage": true,
+  "deferSeparateHardCappedStore": true,
+  "preserveExistingTemperatureControls": true,
+  "preservePriorAttemptsAndConfigurations": true,
+  "buildWorkloadApproved": false,
+  "modelLaunchEnabled": false
+}
