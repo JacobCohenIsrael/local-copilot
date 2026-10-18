@@ -21,7 +21,7 @@ coding subagent that reduces paid-token use. The current milestone serves both.
 
 Repository cleanup done: Rider/JetBrains plugin, Ollama assistant, setup/demo
 scripts, assistant tests and old validation guide removed. The Node package
-retains only the Strata supervisor simulator. AGENT.md records the active scope.
+retains only the Strata supervisor simulator. AGENTS.md records the active scope.
 
 Current focus, 18 October 2026: complete the first working Strata-in-Docker helper task for Codex. See MVP.md for the short path and definition of done.
 

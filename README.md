@@ -84,6 +84,7 @@ details, remaining decisions and execution requirements.
 
 | Location | Purpose |
 | --- | --- |
+| [AGENTS.md](AGENTS.md) | Compact agent guidance and current checkpoint |
 | [MVP.md](MVP.md) | Immediate path to the first real Strata answer and coding patch |
 | [NEXT_STEPS.md](NEXT_STEPS.md) | Current checkpoint, blockers and preserved execution history |
 | [local_worker.py](local_worker.py) | Supervisor CLI for status, preparation, rehearsals and guarded operations |
@@ -92,6 +93,7 @@ details, remaining decisions and execution requirements.
 | [containers/lifecycle/](containers/lifecycle/README.md) | Container lifecycle harness and shutdown validation |
 | [containers/safety/](containers/safety/README.md) | Existing monitoring, watchdog and execution-control evidence |
 | [STRATA_CONTAINER_PLAN.md](STRATA_CONTAINER_PLAN.md) | Container architecture findings and earlier planning context |
+| [docs/history/](docs/history/AGENT-2026-10-18.md) | Archived agent notes; consult only when needed |
 
 For a read-only view of the supervisor's recorded state, run from this directory:
 
