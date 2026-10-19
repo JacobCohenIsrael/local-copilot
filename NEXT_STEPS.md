@@ -16,6 +16,10 @@
 - Left: review the pilot patch, choose a useful small task and generalize this
   narrow host-brokered code-to-edit adapter. Native tool calling and general
   interactive OpenCode provider behavior remain unproven.
+- Future option: Hermes Agent may help coordinate local subagents. First prove
+  usable Strata context capacity through incremental, separately approved tests
+  toward 64K. The current pilot used 512 context tokens; Hermes remains deferred
+  until the 64K gate is met. See the [context plan](containers/model-runtime/HERMES_CONTEXT_PLAN.md).
 
 Ten model attempts are consumed (nine API and one coding). Both latest approvals
 are spent; no retry/reset or further workload is authorized. Keep WSL one CPU /
