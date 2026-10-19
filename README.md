@@ -61,6 +61,9 @@ Left:
 - Verify native model tool-calling/full interactive provider compatibility before
   claiming a general OpenCode coding agent.
 - Evaluate code quality and usefulness on real tasks before tuning performance.
+- Establish usable context capacity incrementally toward 64K before considering
+  Hermes Agent as an optional coordination layer. Each live increase needs fresh
+  scoped approval; see the [Hermes context plan](containers/model-runtime/HERMES_CONTEXT_PLAN.md).
 
 See [the completed pilot](containers/model-runtime/CODING_TASK_1_RESULT.md),
 [the milestone](MVP.md) and [the checkpoint](NEXT_STEPS.md). No further live run

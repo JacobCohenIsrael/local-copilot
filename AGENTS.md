@@ -27,7 +27,10 @@ the owner changes direction.
   emergency stops remain enforced. Startup coordination exercised live. 81 offline
   runtime/integration checks passed, separately from the two successful live runs.
 - Next: review the pilot patch and choose a small useful task before generalizing
-  the adapter. Ten model attempts (nine API, one coding) are consumed/preserved;
+  the adapter. Plan separately approved, incremental context-capacity tests toward
+  64K; consider Hermes only after real capacity is proven. See the
+  [Hermes context plan](containers/model-runtime/HERMES_CONTEXT_PLAN.md).
+  Ten model attempts (nine API, one coding) are consumed/preserved;
   both current approvals are spent. No retry/reset or new workload approved.
   Preserve the inactive 95/98 C proposal and all historical settings/evidence.
 
