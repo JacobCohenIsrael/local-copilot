@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-desktop-import-and-cpu-build",
+  "scope": "one-offline-desktop-cuda-import-and-cpu-strata-build-no-model",
+  "reviewSha256": "35f7e4b766ef0fd25c99de44428ab49bcca1a4a53254c4f384b96a6485163e78",
+  "buildReviewSha256": "d7faf479da04fcf795a165f4dc281fa364c181111396eeb396e29439c20b879f",
+  "sourceEvidenceSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptSourceLimitation": "Firmware refresh latency and calibration are not independently guaranteed; acceptance is only for this one monitored image import and the pinned CPU build, never model runtime.",
+  "acceptSharedDaemonCancellationLimitation": "Docker Desktop owns image unpacking outside the compiler cgroup. Stopping the owned import client does not prove the shared daemon stopped its background work. Do not stop global Docker/WSL automatically. A fault consumes the attempt and blocks compilation.",
+  "thermalPolicySha256": "81c26037a3d9ac49f34319266e8752083bb407670e6c7c09e6bc04f6b092c98f",
+  "acceptUnknownThrottleForThisScope": true,
+  "imageImportEnabled": true,
+  "buildEnabled": true,
+  "imageDownloadEnabled": false,
+  "modelLaunchEnabled": false,
+  "synthetic": false,
+  "maximumAttempts": 1,
+  "ownerMessage": "Approved. Run the combined import and CPU build under the reviewed limits. I accept the CPU-source and shared-Docker cancellation limitations.",
+  "approvedAtUtc": "2026-10-18T06:24:22.085378+00:00"
+}

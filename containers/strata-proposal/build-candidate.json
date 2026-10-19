@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "status": "prepared-not-approved",
+  "packageId": "1c9c3253",
+  "manifestSha256": "ea5b063e3ebbacb3fea1f82d9b83f78b7502abc9d2b5bc1656514c4cbbf48804",
+  "buildEnabled": false,
+  "modelLaunchEnabled": false,
+  "note": "Verified source holder for the offline successor proposal. Its historical networked recipe is not an execution candidate; use offline-build-candidate.json for final compiler review. No workload is approved."
+}

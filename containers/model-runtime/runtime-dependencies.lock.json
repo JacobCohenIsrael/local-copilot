@@ -1,0 +1,33 @@
+[
+  {
+    "name": "cpython-3.13.15+20260901-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.13.15%2B20260901-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+    "bytes": 34810677,
+    "sha256": "8a689a077337bea6d1c4bc0b7df1d52fcaa28f5f67e50df8bf417c1e3f9d8874",
+    "kind": "python"
+  },
+  {
+    "name": "jinja2-3.1.6-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+    "bytes": 134899,
+    "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+    "kind": "wheel",
+    "metadataUrl": "https://pypi.org/pypi/jinja2/3.1.6/json"
+  },
+  {
+    "name": "markupsafe-3.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/a9/21/9b05698b46f218fc0e118e1f8168395c65c8a2c750ae2bab54fc4bd4e0e8/markupsafe-3.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+    "bytes": 22980,
+    "sha256": "ccfcd093f13f0f0b7fdd0f198b90053bf7b2f02a3927a30e63f3ccc9df56b676",
+    "kind": "wheel",
+    "metadataUrl": "https://pypi.org/pypi/markupsafe/3.0.3/json"
+  },
+  {
+    "name": "regex-2026.9.10-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+    "url": "https://files.pythonhosted.org/packages/20/3b/000c79c3f9c06b7542225a5d3a7f9a85405da7224b3b9af94a491d07abea/regex-2026.9.10-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+    "bytes": 804578,
+    "sha256": "bafa41b0dd63669e5c0f8adf3d24819efeb73c847f492eb011212eb352e69041",
+    "kind": "wheel",
+    "metadataUrl": "https://pypi.org/pypi/regex/2026.9.10/json"
+  }
+]

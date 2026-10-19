@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-native-isolation-canary",
+  "scope": "one-small-empty-store-engine-canary-no-image-import",
+  "reviewSha256": "2b5bda1e8c35a5520562c7967d2e1a518faf285e9b4406f4d9b57c2ff20aa743",
+  "nativeRehearsalEnabled": true,
+  "maximumAttempts": 1,
+  "synthetic": false,
+  "sourceEvidenceSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptSourceLimitation": "Firmware refresh latency and calibration are not independently guaranteed; acceptance is only for one monitored 128-MiB empty native-engine canary, never image download/import, compilation, model execution, or an automatic retry.",
+  "thermalPolicySha256": "eaa7a9c4ec259a1733dd4223447f913819bbb001aaf2902db278c32535c71b9d",
+  "acceptUnknownThrottleForThisScope": true,
+  "acceptCapsulePrivilegesSha256": "21e770833a94b3b153ad0a78025551c23533f5b63d7252c8d80ddf787b6c65ff",
+  "ownerMessage": "Approved. Run the one native rehearsal under the reviewed limits and exceptions. Preserve all evidence",
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "buildEnabled": false,
+  "modelLaunchEnabled": false,
+  "approvedAtUtc": "2026-10-18T04:15:49.898662+00:00"
+}

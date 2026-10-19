@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-model-api-test",
+  "scope": "one-sixth-docker-strata-model-api-test-file-access-fix-eight-output-tokens-no-worker",
+  "reviewSha256": "1f8494f279fb07c3c3ae2f62b39ba854e04fd1c915816696544416681d3c5b6a",
+  "acceptPolicySha256": "58c2cb4fc16faeb62279cfee73c1b66b0b0c06d7a631091efd4730771015a4df",
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 90
+  },
+  "acceptFileAccessChange": {
+    "statePublication": "immutable-sequenced-snapshots-no-replacement",
+    "stateRead": "single-read-share-read-delete-not-write",
+    "maximumStateRecords": 16,
+    "maximumStateBytes": 16384,
+    "parentErrorDetails": "bounded-operation-message-errno-winerror-filenames-traceback",
+    "automaticRetries": false,
+    "permissionChanges": false
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": true,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": true,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": "User answered \"Approve this one bounded test\" to: The sixth test is ready: exact review containers/model-runtime/SIXTH_API_REVIEW.md. May I run it once with the tested file-access correction, keeping 93 degrees C admission/97 degrees C stop, 75-second engine silence, the independent 90-second request deadline and all other limits unchanged, accepting the documented source/cancellation limitations and retaining the container/logs? All five previous attempts are spent; Windows administrator consent may be required."
+}

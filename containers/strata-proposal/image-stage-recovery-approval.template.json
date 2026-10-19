@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "status": "draft-awaiting-owner-approval",
+  "scope": "one-pinned-image-acquisition-and-stream-verification-no-import",
+  "reviewSha256": "2f703f5a6b0b17eb9b2005a8d90275237532e9931cdb63ecbed116944c762c30",
+  "recoveryOfFailedSession": "3487a42f960b47f887ddcada151a269a",
+  "sourceEvidenceSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptSourceLimitation": "Firmware refresh latency and calibration are not independently guaranteed; acceptance is for one monitored image download/stream-verification attempt, never import, compilation or model runtime.",
+  "acceptImageThermalPolicySha256": "91a3b97106d67b81466606b46a27742c2df6849ffe39f7d5d54d133ffb732483",
+  "acceptUnknownThrottleForThisScope": true,
+  "maximumAttempts": 1,
+  "ownerMessage": "",
+  "synthetic": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "buildEnabled": false,
+  "modelLaunchEnabled": false
+}

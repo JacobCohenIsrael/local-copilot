@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "status": "recovery-proposal-not-approved",
+  "previousSessionId": "3487a42f960b47f887ddcada151a269a",
+  "previousReviewSha256": "861efd0ff5481c569c1cd13a29bb38ec13878696174448cb443e0ceff1960323",
+  "previousNamespace": ".runtime/guarded-image-stage",
+  "previousTreeSha256": "7b9ab387a0207c681a8d073e9892f45cf97bdf3c995e7aae2392441c841c0581",
+  "preservationDirectory": ".runtime/image-recovery/8de46ce61487484694d473faf9f9bb29",
+  "preservationSha256": "aac617524754554fc5160c8051c9a298173fe73010d286409a5f1ca326e007d4",
+  "authHeaderDiagnosticSha256": "4f074aaf5ed85d3f9a585b812ead1df4dfd5717b0969997bc79c81ba3f8601bd",
+  "authCorrectionCheckSha256": "a342521396bfa11441b5683241cba07f46862f33cc99dccb1a7fa7b3c9409c0f",
+  "newNamespace": ".runtime/guarded-image-stage-recovery-1",
+  "maximumNewAttempts": 1,
+  "resetPreviousAttempt": false,
+  "automaticRetry": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "buildEnabled": false,
+  "modelLaunchEnabled": false
+}

@@ -11,6 +11,10 @@
     "sourceMap": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
+  "include": [
+    "src/supervisor-cli.ts",
+    "src/supervisor/**/*.ts",
+    "test/supervisor.test.ts"
+  ],
   "exclude": ["node_modules", "dist", ".runtime"]
 }

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "status": "draft-for-owner-review",
+  "approved": false,
+  "buildEnabled": false,
+  "modelLaunchEnabled": false,
+  "scope": "one-cpu-only-linux-compile-no-engine-execution",
+  "buildManifestSha256": "2bf9f403e7cf5ed8b5e7e154aa745f53b294a63ca17a83226ae61f7d1ce6c2c0",
+  "readerSha256": "6e0282eeecaf8d97e1a210c48c965c150b31122dfc1010273fd9488304bdc121",
+  "resources": {
+    "cpuQuota": 1,
+    "memoryBytes": 4294967296,
+    "swapBytes": 0,
+    "pids": 128,
+    "gpuDevices": [],
+    "compilerJobs": 1,
+    "deadlineSeconds": 1800,
+    "automaticRetry": false
+  },
+  "temperature": {
+    "source": "ASUS DSTS 0x00120094",
+    "validatedSourceRequired": true,
+    "startAtOrBelowC": 75,
+    "coolBaselineSeconds": 10,
+    "stopAtOrAboveC": 80,
+    "sampleIntervalSeconds": 1,
+    "maxSampleAgeSeconds": 2.5,
+    "maxQuerySeconds": 1,
+    "maxControllerLeaseSeconds": 2.5
+  },
+  "throttleException": {
+    "status": "requested-not-approved",
+    "scope": "cpu-only-build-only",
+    "allowUnknownInSimulation": true,
+    "assertNotThrottling": false,
+    "knownThrottlingStillFaults": true,
+    "appliesToModelRuntime": false
+  },
+  "stop": {
+    "termGraceSeconds": 1,
+    "confirmStoppedWithinSeconds": 5,
+    "latchFirstFault": true,
+    "automaticReset": false
+  },
+  "remainingGates": [
+    "Explicit owner approval of this build-only throttle exception and numeric limits",
+    "Validate ASUS CPU source meaning and update behavior; a fresh wrapper timestamp is insufficient",
+    "Bound the reader lifetime through baseline, full build deadline and confirmed shutdown",
+    "Implement and test live controller/watchdog liveness and emergency stop deadlines",
+    "Verify exact compiler identity and quotas before start; no GPU device or engine execution",
+    "Measure disk reserve and bound dependency downloads; review dependency reproducibility limits",
+    "Separate owner approval of the final executable build manifest and workload"
+  ],
+  "limitations": [
+    "Candidate temperatures are deliberately restrictive review values, not manufacturer-certified safe limits",
+    "Unknown throttle status reduces observability; temperature cannot substitute for the missing channel",
+    "A CPU-only container can still heat the laptop; quotas do not guarantee physical power or temperature",
+    "Host, driver or Docker failure can prevent software shutdown; no hardware cutoff is provided"
+  ]
+}

@@ -1,0 +1,15 @@
+# Disabled review recipe; verified musl CLI/libs are staged under .runtime.
+# Not an assembled context: add pinned runtime libraries before an approved build.
+# Building requires separate approval. No network installer or latest tag.
+FROM docker.io/library/python@sha256:2055081c860db8c842b663415b795b026e7e5cc63b59c5193fcc9997713ea5b8
+ARG OPENCODE_SHA256
+COPY staged/opencode /usr/local/bin/opencode
+# A caller-supplied hash is not source authentication; verify origin separately.
+RUN test "${#OPENCODE_SHA256}" -eq 64 && \
+    printf '%s  /usr/local/bin/opencode\n' "$OPENCODE_SHA256" | sha256sum -c - && \
+    chmod 0555 /usr/local/bin/opencode
+ENV HOME=/tmp/home XDG_CONFIG_HOME=/tmp/config XDG_DATA_HOME=/tmp/data XDG_CACHE_HOME=/tmp/cache
+USER 65532:65532
+WORKDIR /workspace
+# Overriding this is not an approval mechanism; the host supervisor is the gate.
+ENTRYPOINT ["/bin/sh", "-c", "echo 'Local Copilot: worker execution disabled' >&2; exit 64"]

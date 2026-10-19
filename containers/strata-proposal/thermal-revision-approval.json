@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "status": "owner-approved-controls-only",
+  "recordedOn": "2026-10-17",
+  "ownerMessage": "Approved, let's go with 92°C to start and 97°C to stop for the CPU-only build. Continue to the next step.",
+  "approvedRevisionSha256": "76a05a4bf311b8fb9ea8c1c52ca08c55142d96397079acc17e307cccec0e00f8",
+  "hashNormalization": "UTF-8 bytes with CRLF normalized to LF",
+  "scope": "one-cpu-only-linux-compile-no-engine-execution",
+  "buildEnabled": false,
+  "modelLaunchEnabled": false,
+  "notAuthorized": [
+    "Compilation, image pull or model loading",
+    "Waiving sensor validation, dependency budgets or other remaining gates"
+  ]
+}
