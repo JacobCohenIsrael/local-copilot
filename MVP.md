@@ -5,35 +5,32 @@ model runs through Strata inside Docker, OpenCode edits one disposable file,
 Codex receives its patch, and the local processes stop. A build, health check,
 simulation or empty-engine rehearsal alone does not complete this milestone.
 
-## What is already usable
+## First milestone completed
 
-- Docker Desktop, existing model files and the Windows Strata installation.
-- Downloaded and verified CUDA base-image blobs and pinned Linux build inputs.
-- The Linux OpenCode executable and a restricted one-file editing workflow,
-  verified in Docker against scripted API replies.
-- File staging, patch collection, task limits and the existing host watchdog.
-- CPU monitoring with the existing 92 C admission / 97 C stop controls.
+The [real Docker answer](containers/model-runtime/STARTUP_WARNINGS_API_RESULT.md)
+returned READY. The [coding pilot](containers/model-runtime/CODING_TASK_1_RESULT.md)
+then returned a real 113-byte patch changing `VALUE = 1` to `VALUE = 2`.
 
-The Linux Strata executable has NOT been built. No real Strata model request
-has run in Docker. That is the current functional gap.
+Codex staged one disposable file. OpenCode made its real request, the host broker
+asked Strata for replacement code, and OpenCode's edit tool applied the generated
+text. The patch and structured result returned to Codex. Both containers stopped,
+exit 0, with originals unchanged. The model's code was neither scripted nor
+constructed by the adapter; the adapter only removed the surrounding code fence
+and translated the result to an edit-tool call. Its final acknowledgement is local.
 
-## Immediate path
+This proves a narrow one-file code-to-edit integration. It does not prove native
+Strata tool calling or general interactive OpenCode behavior. Review this pilot
+before choosing a useful small task and broadening the adapter. Do not expand
+monitoring, storage infrastructure, optional MCP or UI work instead.
 
-1. Make the verified CUDA base available to the selected Docker engine and
-   compile the pinned Strata source for this laptop's GPU architecture (86),
-   without vision or benchmark work. Reuse the existing bounded compiler path.
-2. Prepare a separate Linux configuration pointing at the existing model and
-   pack through read-only mounts. Keep automatic setup/downloads/restarts off.
-   Leave the working Windows configuration unchanged.
-3. Start one supervised Strata container, wait for its API, and request a very
-   short answer. This is the first actual runtime compatibility test.
-4. Connect the existing OpenCode worker to that API and submit one disposable
-   one-file edit from Codex. Return the patch and structured result to Codex.
-5. Stop the worker and Strata, retain the result, and assess usefulness before
-   doing any performance tuning or expanding access to real projects.
+Startup targets are warnings; ten seconds of valid telemetry is still required.
+CPU stop remains 97 C and all other emergency stops, resource caps, watchdogs,
+leases, deadlines and isolation stay enforced. CPU-build policy remains 92/97 C.
+The READY scope used eight output tokens; the coding task allowed 32 and used ten.
+Both kept 512 context, one CPU/4 GiB, a 90-second call and 300-second model lifetime.
 
-The first artifact to demonstrate is the real model's answer; the final artifact
-is its code patch. Report progress against those outcomes.
+All ten model attempts are preserved and consumed. Further live workloads need
+fresh scoped authorization; there is no automatic retry or fault reset.
 
 ## Approved storage route for the first test
 
@@ -44,9 +41,16 @@ and retained disk without further work on that route.
 
 The connected `local_worker.py` commands `prepare-desktop-test`,
 `review-desktop-test` and `run-desktop-test` prepare, inspect and execute one
-verified CUDA import followed by the existing CPU build. Execution requires one
-exact combined workload approval; the storage choice alone cannot launch it.
-See `containers/strata-proposal/DESKTOP_BUILD_REVIEW.md` for the prepared operation.
+verified CUDA import followed by the existing CPU build. That approved attempt
+is now consumed: import succeeded and build startup failed. Do not rerun it.
+That operation is historical; the subsequent CPU-only build is now complete.
+See `containers/strata-proposal/DESKTOP_BUILD_RESULT.md` for the execution outcome.
+`prepare-build-recovery`, `review-build-recovery`, `run-build-recovery` and
+`cancel-build-recovery` now expose that separate, approval-gated CPU-only scope.
+That first CPU-only recovery is now consumed and FAULT-latched; its stopped
+container and logs are retained. These commands do not authorize a retry/reset.
+The later `run-build-timing` attempt completed successfully and is also consumed.
+Use its exported artifacts for runtime preparation; another build is unnecessary.
 
 ## Keep in the background
 

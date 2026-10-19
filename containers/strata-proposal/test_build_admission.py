@@ -272,7 +272,8 @@ class AdmittedControllerTests(unittest.TestCase):
         self.assertEqual(state['phase'], 'FAULT')
         self.assertEqual(state['fault']['code'], 'CPU_HOT')
         self.assertTrue(state['stopConfirmed'])
-        self.assertTrue(state['cleanupComplete'])
+        self.assertFalse(state['cleanupComplete'])
+        self.assertTrue(state['retainedStoppedTarget'])
         self.assertIsNone(self.monitor.gate.throttle)
         with self.assertRaisesRegex(ValueError, 'consumed'):
             controller.Session(self.live, self.directory, self.target, self.docker,
@@ -287,7 +288,8 @@ class AdmittedControllerTests(unittest.TestCase):
             state = self.session.poll()
         self.assertEqual(state['phase'], 'FAULT')
         self.assertTrue(state['stopConfirmed'])
-        self.assertTrue(state['cleanupComplete'])
+        self.assertFalse(state['cleanupComplete'])
+        self.assertTrue(state['retainedStoppedTarget'])
 
     def test_source_permit_never_qualifies_without_an_owned_live_reader(self):
         self.feed.process = None
@@ -332,7 +334,7 @@ class AdmittedControllerTests(unittest.TestCase):
 
 class FirstBuildRunnerTests(unittest.TestCase):
     """End-to-end production protocol using fake guard/Docker, no OS child."""
-    def test_guard_exit_race_is_reread_and_successful_run_cleans_owned_target(self):
+    def run_fixture(self, *, failure=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             live = root / 'live'
@@ -355,6 +357,10 @@ class FirstBuildRunnerTests(unittest.TestCase):
                     with (session / 'guard.pulse').open('ab') as pulse:
                         pulse.write(b'x')
                     state = json.loads(state_file.read_text()) if state_file.exists() else {'phase': 'ARMED'}
+                    if failure and state['phase'] == 'RUNNING':
+                        state.update(phase='FAULT', fault={'code':'UNEXPECTED_WORKER_EXIT'},
+                                     stopConfirmed=True, cleanupComplete=False)
+                        self.returncode = 0
                     if (session / 'export.request').exists():
                         state['phase'] = 'EXPORTING'
                     if (session / 'export.result.json').exists():
@@ -395,14 +401,31 @@ class FirstBuildRunnerTests(unittest.TestCase):
                     patch.object(first_build, '_ready', return_value=True), \
                     patch.object(first_build.controller, 'GuardedExport'), \
                     patch.object(first_build.export, 'collect', return_value=(artifact, {})), \
+                    patch.object(first_build.build_diagnostics, 'collect') as diagnostic, \
                     patch.object(first_build.guard, 'stop_target', side_effect=lambda *a, **k:
-                        (stop_events.append(True) or {'stopConfirmed': True, 'cleanupComplete': True})) as stop:
-                result = first_build.run()
-                self.assertEqual(result['phase'], 'COMPLETE')
+                        (stop_events.append(True) or {'stopConfirmed': True, 'cleanupComplete': not failure,
+                                                     'retainedStoppedTarget': failure})) as stop:
+                if failure:
+                    with self.assertRaisesRegex(ValueError,'FIRST_BUILD_FAILED'):
+                        first_build.run()
+                    diagnostic.assert_called_once()
+                    self.assertFalse((live/'emergency.json').exists())
+                    self.assertEqual(json.loads(state_file.read_text())['fault']['code'],'UNEXPECTED_WORKER_EXIT')
+                else:
+                    result = first_build.run()
+                    self.assertEqual(result['phase'], 'COMPLETE')
+                    diagnostic.assert_not_called()
                 self.assertEqual([c.args[0] for c in docker.call.call_args_list].count('start'), 1)
                 self.assertTrue((live / 'attempt.json').exists())
                 launch.assert_called_once()
                 stop.assert_called_once()
+                self.assertIs(stop.call_args.kwargs['remove'],False)
+
+    def test_guard_exit_race_is_reread_and_successful_run_cleans_owned_target(self):
+        self.run_fixture()
+
+    def test_startup_failure_is_stopped_retained_and_logged_without_false_emergency(self):
+        self.run_fixture(failure=True)
 
 
 if __name__ == '__main__':

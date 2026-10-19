@@ -114,9 +114,9 @@ class Session:
     def _save(self):
         guard.base.atomic(self.file, self.state)
 
-    def _stop(self, started=None):
+    def _stop(self, started=None, *, remove=True):
         return guard.stop_target(self.docker, {}, self.target.container_id, started=started,
-                                 clock=self.clock, matcher=self.target.matcher)
+                                 clock=self.clock, matcher=self.target.matcher, remove=remove)
 
     def fail(self, code):
         if self.state['fault'] is not None:
@@ -128,7 +128,9 @@ class Session:
         except Exception as error:
             self.state['journalError'] = type(error).__name__
         finally:
-            self.state.update(self._stop(stop_started))
+            # Keep failed real containers stopped, preserving their bounded logs
+            # for the parent. Successful export still removes its owned target.
+            self.state.update(self._stop(stop_started, remove=self.target.synthetic))
         try:
             self._save()
         except Exception as error:
@@ -173,6 +175,8 @@ class Session:
             else:
                 observation = self.gate.tick(elapsed=elapsed, unix=unix, controller_age=controller_age)
             if observation['fault']:
+                if self.monitor is not None and self.monitor.last_error is not None:
+                    self.state['monitorError'] = self.monitor.last_error
                 return self.fail(observation['fault'])
             outer = 35 if self.target.synthetic else self.permit.packet['outerSeconds']
             if elapsed > outer:

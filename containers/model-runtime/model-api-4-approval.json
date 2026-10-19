@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-model-api-test",
+  "scope": "one-fourth-docker-strata-model-api-test-native-iq-spec-2-eight-output-tokens-no-worker",
+  "reviewSha256": "29c70fec244b6f0f747dc60e39aab091387af43b55d5bc7708e2320ebc533bb2",
+  "acceptPolicySha256": "58c2cb4fc16faeb62279cfee73c1b66b0b0c06d7a631091efd4730771015a4df",
+  "acceptStartupArgumentChange": {
+    "argument": "--spec",
+    "from": "0",
+    "to": "2",
+    "mtpEnabled": false,
+    "suffixDraft": 0
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": true,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": true,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": "Approved. Run the fourth GPU-enabled API test with --spec 2, keeping 93\u00b0C admission, the 97\u00b0C stop and all other limits unchanged. I accept the documented limitations. Preserve all evidence and retain the container and logs."
+}

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "status": "NOT_APPROVED",
+  "scope": "one-ninth-docker-strata-model-api-test-cpu-95-98-eight-output-tokens-no-worker",
+  "reviewSha256": "973f9f16d51c40d8cd2204330a3d87692c4d96b20ad1c818f9664aae7dc649ef",
+  "acceptPolicySha256": "03bfb7a9342b266d8e326c66ce6a1aedd8aebc39b7e0b8cf5bfa4832e1d3f109",
+  "acceptCpuThresholdChange": {
+    "cpuStartC": {
+      "from": 94,
+      "to": 95
+    },
+    "cpuStopC": {
+      "from": 97,
+      "to": 98
+    }
+  },
+  "acceptStartupStatusChange": {
+    "coordination": "skip-periodic-inspect-only-during-one-guard-granted-start",
+    "dockerStartSeconds": 1.5,
+    "periodicInspectSeconds": 1,
+    "handoffSeconds": 2.5,
+    "handoffBudgetSource": "existing-controller-guard-lease",
+    "modelDeadlineAnchor": "guard-grant-before-container-start",
+    "telemetryAndLeasesContinue": true,
+    "automaticRetry": false
+  },
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 90
+  },
+  "acceptFileAccessChange": {
+    "statePublication": "immutable-sequenced-snapshots-no-replacement",
+    "stateRead": "single-read-share-read-delete-not-write",
+    "maximumStateRecords": 16,
+    "maximumStateBytes": 16384,
+    "parentErrorDetails": "bounded-operation-message-errno-winerror-filenames-traceback",
+    "automaticRetries": false,
+    "permissionChanges": false
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": false,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": false,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": ""
+}

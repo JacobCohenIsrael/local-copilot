@@ -104,19 +104,19 @@ def source_tree(plan):
 def helpers():
     paths = [p for root in (HERE, HERE.parent / 'worker') for p in root.glob('*.py')
              if not p.name.startswith('test_')]
-    paths += [HERE / 'cpu_reader.ps1', HERE.parent / 'lifecycle/supervisor.py', HERE.parents[1] / 'local_worker.py']
+    paths += [HERE / 'cpu_reader.ps1', HERE / 'cpu_build_reader.ps1', HERE.parent / 'lifecycle/supervisor.py', HERE.parents[1] / 'local_worker.py']
     return {p.relative_to(HERE.parents[1]).as_posix(): hashlib.sha256(p.read_bytes().replace(b'\r\n', b'\n')).hexdigest()
             for p in sorted(paths)}
 
 
-def prepare():
-    directory, plan_sha, plan = selected()
+def material(*, selection=None, live_namespace=None, scope=None):
+    directory, plan_sha, plan = selected() if selection is None else selection
     controls = policy.load_effective_controls()
     source_review = cpu.report()
     sources = source_tree(plan)
     tool_receipt = offline.verified_tools(plan['toolDirectory'])
     packet = {'version': 1, 'status': 'REVIEW_ONLY_NOT_APPROVED',
-              'scope': controls['scope'], 'offlineDirectory': str(directory), 'offlinePlanSha256': plan_sha,
+              'scope': controls['scope'] if scope is None else scope, 'offlineDirectory': str(directory), 'offlinePlanSha256': plan_sha,
               'sourceReview': source_review, 'sourceReviewSha256': sha(source_review), 'sourceTree': sources,
               'toolReceiptSha256': plan['toolReceiptSha256'], 'toolTreeFiles': len(tool_receipt['files']),
               'controls': controls['temperature'], 'resources': controls['resources'], 'stop': controls['stop'],
@@ -125,7 +125,7 @@ def prepare():
                     'guestSwapBytes': 0, 'settingsFile': str(Path.home() / '.wslconfig'),
                     'proposalSha256': tools.sha(HERE / 'wsl-build-limits.proposed'),
                     'requiresSeparatePolicyApprovalAndWslRestart': True},
-              'helperSha256': helpers(), 'liveNamespace': str(LIVE), 'maximumAttempts': 1,
+              'helperSha256': helpers(), 'liveNamespace': str(LIVE if live_namespace is None else live_namespace), 'maximumAttempts': 1,
               'admissionWaitSeconds': 90, 'outerSeconds': 1910,
               'image': image_plan.metadata(), 'buildEnabled': False, 'modelLaunchEnabled': False,
               'imageDownloadEnabled': False, 'imageImportEnabled': False,
@@ -134,6 +134,11 @@ def prepare():
                   'Fresh CPU baseline, remaining reader coverage and independent watchdog lease',
                   'Fresh host/guest capacity check and all source/tool/helper identities unchanged'],
               'imagePreparationLimitation': 'Docker daemon image import is outside the compiler CPU/RAM/tmpfs caps; preparation remains a separate reviewed and approved operation.'}
+    return packet
+
+
+def prepare():
+    packet = material()
     digest = sha(packet)
     tools.plain(ROOT)
     with guard.base.lock(ROOT / 'control'):
@@ -206,12 +211,16 @@ class Permit:
     def packet(self):
         return json.loads(self.packet_json)
 
+    @property
+    def live_namespace(self):
+        return LIVE
+
     def target(self, target, namespace):
         import offline_target
         packet = self.packet
         expected = offline_target.from_proposal(packet['offlineDirectory'], packet['offlinePlanSha256'], target.container_id)
-        if (self.review_sha256 != sha(packet) or target.synthetic or target != expected or Path(namespace).absolute() != LIVE or
-                packet['liveNamespace'] != str(LIVE)):
+        if (self.review_sha256 != sha(packet) or target.synthetic or target != expected or Path(namespace).absolute() != self.live_namespace or
+                packet['liveNamespace'] != str(self.live_namespace)):
             raise ValueError('First-build permit target/namespace mismatch')
 
     def qualify(self, frame):

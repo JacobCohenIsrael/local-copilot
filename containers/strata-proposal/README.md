@@ -1,6 +1,6 @@
 # Pinned Linux Strata build proposal
 
-**Current next operation (18 October):** normal Docker Desktop storage is approved. The verified-image import and first CPU Strata build are connected and ready for one combined workload approval; see [the exact review](DESKTOP_BUILD_REVIEW.md). 338 offline tests pass. No model has run. Separate-engine rehearsals are deferred. Earlier milestone notes below are historical.
+**Current checkpoint (18 October):** [the CPU-only build completed](CPU_BUILD_TIMING_RESULT.md): all 153 steps passed, artifacts are hash-verified, and owned shutdown is confirmed. The [first real model/API test](../model-runtime/FIRST_API_REVIEW.md) is prepared for approval with unchanged CPU/RAM caps and explicit runtime controls; 386 offline tests pass. Previous evidence/configurations are preserved. Model/GPU execution remains disabled. Earlier checkpoints below are historical.
 
 
 **Isolation implementation update:** see [the native rehearsal review](NATIVE_REHEARSAL_REVIEW.md).

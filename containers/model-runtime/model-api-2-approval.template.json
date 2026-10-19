@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "status": "NOT_APPROVED",
+  "scope": "one-second-docker-strata-model-api-test-eight-output-tokens-no-worker",
+  "reviewSha256": "fc1d1d9c970ba58922483dd57aac625cef87fd4879d83fe0cf413a166ae04599",
+  "acceptPolicySha256": "4cf33c6e0f3cfeda2bbf8cd10af17a7a337c276600129667b21b11ec1bba3a98",
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": false,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": false,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": ""
+}

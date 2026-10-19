@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-model-api-test",
+  "scope": "one-eighth-docker-strata-model-api-test-coordinated-startup-eight-output-tokens-no-worker",
+  "reviewSha256": "5e7f1a40d21c24bd64fa495d8b821994def2e8e3c189318c3175b432de42b8d1",
+  "acceptPolicySha256": "578ca27e5ba15466544c3f520a1ba9c00efe0d3969b3ef0842fe495d37fde5e2",
+  "acceptStartupStatusChange": {
+    "coordination": "skip-periodic-inspect-only-during-one-guard-granted-start",
+    "dockerStartSeconds": 1.5,
+    "periodicInspectSeconds": 1,
+    "handoffSeconds": 2.5,
+    "handoffBudgetSource": "existing-controller-guard-lease",
+    "modelDeadlineAnchor": "guard-grant-before-container-start",
+    "telemetryAndLeasesContinue": true,
+    "automaticRetry": false
+  },
+  "acceptCpuAdmissionChange": {
+    "setting": "cpuStartC",
+    "from": 93,
+    "to": 94,
+    "cpuStopC": 97
+  },
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 90
+  },
+  "acceptFileAccessChange": {
+    "statePublication": "immutable-sequenced-snapshots-no-replacement",
+    "stateRead": "single-read-share-read-delete-not-write",
+    "maximumStateRecords": 16,
+    "maximumStateBytes": 16384,
+    "parentErrorDetails": "bounded-operation-message-errno-winerror-filenames-traceback",
+    "automaticRetries": false,
+    "permissionChanges": false
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": true,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": true,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": "User answered \"Approve this one bounded test\" to: The eighth test is ready: exact review containers/model-runtime/EIGHTH_API_REVIEW.md. May I run it once with coordinated startup/status handling, keeping 94 degrees C admission/97 degrees C stop, existing start/status/lease deadlines, 75-second engine silence, the 90-second request deadline and all other limits unchanged, accepting the documented source/cancellation limitations and retaining the container/logs? All seven earlier attempts remain preserved. Windows administrator consent may be required."
+}

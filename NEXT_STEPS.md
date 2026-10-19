@@ -1,20 +1,27 @@
-# Project checkpoint ג€” 17 October 2026
+# Project checkpoint - 19 October 2026
 
-## Current milestone: ordinary Docker import and first Strata build
+## Current milestone: real Docker answer and Codex/OpenCode patch completed
 
-The owner approved normal Docker Desktop storage for the first test. Private
-engine/VHDX rehearsals are deferred. See containers/strata-proposal/DESKTOP_BUILD_REVIEW.md.
+- Done: real Strata Docker answer READY, then one Codex-submitted file edit,
+  `VALUE = 1` -> `VALUE = 2`, applied by OpenCode and returned as a 113-byte patch.
+- Done: both coding containers exited 0/stopped, originals unchanged, real response
+  hash linked to the exact text applied by OpenCode. All host helpers exited.
+- Done: startup targets changed to warnings by explicit owner direction. Ten
+  seconds of valid telemetry remains required. CPU 97 C/GPU 75 C and all other
+  emergency stops, budgets, leases and isolation stayed enforced. The inactive
+  95/98 C proposal remains preserved.
+- Validation: 81 offline runtime/integration checks passed; live results are
+  separate evidence. See [coding result](containers/model-runtime/CODING_TASK_1_RESULT.md)
+  and [first real answer](containers/model-runtime/STARTUP_WARNINGS_API_RESULT.md).
+- Left: review the pilot patch, choose a useful small task and generalize this
+  narrow host-brokered code-to-edit adapter. Native tool calling and general
+  interactive OpenCode provider behavior remain unproven.
 
-- Done: connected verified CUDA import directly to the guarded offline CPU build;
-  338 offline tests pass. Exact combined review and disabled template are frozen.
-- Left: obtain one combined workload approval, import and compile Linux Strata;
-  then a real API answer, one Codex-submitted OpenCode edit, returned patch and stop.
-
-Storage approval alone does not authorize import/compilation. Model execution
-remains disabled. Keep existing 92/97 C controls and WSL 1 CPU/6 GiB/no swap.
-Preserve old attempts, attached disk and unstarted container; do not pursue that
-deferred route. The older execution checklists below are historical.
-
+Ten model attempts are consumed (nine API and one coding). Both latest approvals
+are spent; no retry/reset or further workload is authorized. Keep WSL one CPU /
+6 GiB / no swap and model container one CPU / 4 GiB. No firmware/power/fan or
+original Strata configuration changes occurred. Preserve retained containers and
+attached bare disk. Earlier checklists below are historical.
 
 Project purpose: Strata as a substitute for paid coding agents and a local
 coding subagent that reduces paid-token use. The current milestone serves both.

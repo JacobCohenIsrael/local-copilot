@@ -81,11 +81,14 @@ class Feed:
         self.observed_exit_code = None
 
     def start_reader(self, *, samples=1920):
+        from build_admission import Permit
         if self.synthetic or self.process is not None or self.sequence:
             raise ValueError('Real reader requires a fresh non-synthetic feed')
         if type(samples) is not int or not 1 <= samples <= 1920:
             raise ValueError('Reader sample budget invalid')
-        if tools.sha(READER) != READER_SHA:
+        reader, reader_sha = (self.source_permit.reader_contract if isinstance(self.source_permit, Permit) and
+                              hasattr(self.source_permit, 'reader_contract') else (READER, READER_SHA))
+        if tools.sha(reader) != reader_sha:
             raise ValueError('Reviewed reader changed')
         self.directory.mkdir(parents=True, exist_ok=True)
         if any(self.directory.iterdir()):
@@ -103,7 +106,7 @@ class Feed:
                     raise ValueError('Reader evidence namespace lacks session capacity')
             executable = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
             env = {k: os.environ[k] for k in ('SystemRoot', 'TEMP', 'TMP') if k in os.environ}
-            self.process = windows_job.Process([str(executable), '-NoProfile', '-NonInteractive', '-File', str(READER),
+            self.process = windows_job.Process([str(executable), '-NoProfile', '-NonInteractive', '-File', str(reader),
                                '-SessionDirectory', str(self.directory), '-Samples', str(samples)],
                                cwd=self.directory, env=env, memory_bytes=256 * 1024**2, processes=4)
         except BaseException:
@@ -182,8 +185,11 @@ class Monitor:
     cannot be switched after construction, and is never live admission evidence.
     """
     def __init__(self, feed, *, unix=time.time):
+        from build_admission import Permit
         self.feed, self.unix = feed, unix
         self.gate = controller.RehearsalGate() if feed.synthetic else policy.CpuBuildReadinessGate()
+        if isinstance(feed.source_permit, Permit) and hasattr(feed.source_permit, 'query_budget'):
+            self.gate.draft['temperature']['maxQuerySeconds'] = feed.source_permit.query_budget
         self.started = feed.clock()
         self.last_error = None
 

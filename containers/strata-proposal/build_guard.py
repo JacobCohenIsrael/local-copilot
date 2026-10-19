@@ -194,7 +194,7 @@ class DeadlineDocker:
         return base.Docker.inspect(self, name)
 
 
-def stop_target(docker, spec, expected_id, *, started=None, clock=time.monotonic, matcher=None):
+def stop_target(docker, spec, expected_id, *, started=None, clock=time.monotonic, matcher=None, remove=True):
     """Bound exit confirmation to approved controls, then separately bound cleanup.
 
     This cannot promise physical shutdown during a daemon/host failure. It
@@ -234,12 +234,22 @@ def stop_target(docker, spec, expected_id, *, started=None, clock=time.monotonic
                       stopError=str(error)[:512])
         return result
 
+    if not remove:
+        result['retainedStoppedTarget'] = True
+        return result
+
     # The five-second rule is for confirmed exit. Removal has its own bounded
     # phase; it must never turn a confirmed stop into falsely confirmed cleanup.
     cleanup = DeadlineDocker(docker, clock() + 5, clock)
     try:
         if inspected(cleanup) is not None:
-            cleanup.call('rm', expected_id)
+            try:
+                cleanup.call('rm', expected_id)
+            except Exception:
+                # Another owned stopper may have removed the same immutable ID.
+                # A fresh confirmed absence resolves that race; an outage does not.
+                if inspected(cleanup) is not None:
+                    raise
         if inspected(cleanup) is not None:
             raise RuntimeError('Removal not confirmed')
         result['cleanupComplete'] = True

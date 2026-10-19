@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "status": "NOT_APPROVED",
+  "scope": "one-fifth-docker-strata-model-api-test-bounded-silence-75-eight-output-tokens-no-worker",
+  "reviewSha256": "cbbcdf85aa9a72b6122fc1c30ecdaf89fe2ba0347ef5e17b73868cbcfcfaf38b",
+  "acceptPolicySha256": "58c2cb4fc16faeb62279cfee73c1b66b0b0c06d7a631091efd4730771015a4df",
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 90
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": false,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": false,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": ""
+}

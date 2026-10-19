@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-cpu-build-timing",
+  "scope": "one-cpu-build-timing-imported-image-no-download-import-or-model",
+  "reviewSha256": "5201aa43ea96c130e96b1b89cd97c9d913919a86e6f14b748783aaa682005fc5",
+  "acceptBuildTiming": {
+    "sensorQuerySeconds": 1.5,
+    "readyQuerySeconds": 1.5,
+    "previousSensorQuerySeconds": 1,
+    "previousReadyQuerySeconds": 1,
+    "appliesToModelRuntime": false
+  },
+  "acceptSourceQualificationSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptSourceLimitation": "Firmware refresh latency and calibration are not independently guaranteed; acceptance is for one monitored CPU-only build, never model runtime.",
+  "maximumAttempts": 1,
+  "synthetic": false,
+  "buildEnabled": true,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "modelLaunchEnabled": false,
+  "acceptStoppedFailureContainerRetention": true,
+  "ownerMessage": "Approved. Run the one CPU-only build with the 1.5-second timing adjustment and unchanged temperature/resource limits. I accept the documented source/cancellation limitations."
+}

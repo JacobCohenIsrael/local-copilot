@@ -6,23 +6,30 @@ Use Strata in Docker for local coding, both directly and as a bounded helper for
 Codex (Claude later). OpenCode is the coding worker; the supervisor stages selected
 files, returns a patch and structured result, and stops the local components.
 
-Prioritize the first real Strata answer, then one Codex-submitted OpenCode edit
-with a returned patch and confirmed shutdown. Reuse existing guards. Defer sensor
+Build on the proven Docker answer and one-file coding pilot. Prioritize useful
+Codex-submitted tasks with returned patches and confirmed shutdown; do not repeat
+the completed READY/toy tests without a concrete reason. Reuse existing guards. Defer sensor
 research, private-engine rehearsals, tuning, MCP and UI unless a concrete blocker
 requires them. The Ollama assistant and JetBrains plugin are retired; retain the
 independent TypeScript Strata simulator. Do not restore retired components unless
 the owner changes direction.
 
-## Current checkpoint (18 October 2026)
+## Current checkpoint (19 October 2026)
 
-- Done: verified CUDA blobs/build inputs, scripted-API OpenCode editing and a
-  connected ordinary-Docker import-to-CPU-build workflow. Linux Strata is unbuilt;
-  no real model request has run in Docker.
-- Next: execute the prepared combined import/build after exact workload approval,
-  then prepare runtime admission and the first real coding task. Normal Docker
-  storage is approved for the first test; import/build execution is still pending.
-  See [the exact operation](containers/strata-proposal/DESKTOP_BUILD_REVIEW.md)
-  when working on that step. [MVP.md](MVP.md) describes the remaining route.
+- Done: Linux CPU build 153/153, exported/hash-verified artifacts. Real Strata
+  Docker answer **READY** (19 prompt/2 output tokens), followed by one real
+  Codex-submitted OpenCode edit: `VALUE = 1` -> `VALUE = 2`, returned 113-byte patch.
+- Done: [coding result](containers/model-runtime/CODING_TASK_1_RESULT.md). Real
+  model response supplied the replacement; OpenCode's edit tool applied it.
+  Both containers exit 0/stopped; originals unchanged. This narrow host-brokered
+  one-file adapter does not establish general/native model tool calling.
+- Startup targets now warn; CPU emergency stop remains 97 C and all other
+  emergency stops remain enforced. Startup coordination exercised live. 81 offline
+  runtime/integration checks passed, separately from the two successful live runs.
+- Next: review the pilot patch and choose a small useful task before generalizing
+  the adapter. Ten model attempts (nine API, one coding) are consumed/preserved;
+  both current approvals are spent. No retry/reset or new workload approved.
+  Preserve the inactive 95/98 C proposal and all historical settings/evidence.
 
 ## Execution boundaries
 
@@ -31,9 +38,14 @@ the owner changes direction.
   model files and configurations. Obtain explicit approval for live workloads,
   model/GPU tests, safety-policy changes, firmware or power-setting changes.
   Reuse existing scoped approvals; do not ask again for already-approved policy.
-- Existing CPU controls: admission at or below 92 C for ten seconds; stop at
-  97 C. WSL currently has 1 CPU, 6 GiB RAM and no swap; the compiler proposal has
-  1 CPU, 4 GiB and one job. These are not approved model-runtime limits.
+- CPU-build admission stays at or below 92 C for ten seconds; stop at 97 C.
+  Model/API startup targets are advisory by owner instruction: CPU 94 C, GPU
+  60 C/40 W/4096 MiB and host free RAM 8192 MiB. Require ten seconds of valid
+  telemetry without resetting for target exceedances; save startup warnings.
+  Keep CPU 97 C and all eighth-scope emergency stops enforced. WSL has
+  1 CPU, 6 GiB and no swap; compiler/API containers use 1 CPU and 4 GiB,
+  compiler one job. A consumed approval never authorizes another attempt.
+  The older 95/98 C proposal is inactive; CPU-build policy is unchanged.
   CPU firmware freshness/calibration and throttle status have documented
   limitations; never invent readings or extend scope-specific acceptance.
 - Keep task/context/file/output limits, fresh telemetry, independent watchdogs,

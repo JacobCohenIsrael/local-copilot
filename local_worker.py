@@ -38,6 +38,11 @@ import import_rehearsal
 import isolation_preparation
 import isolated_session
 import desktop_test
+import build_recovery
+import build_timing
+sys.path.insert(0, str(REPO / 'containers/model-runtime'))
+import runtime_plan
+import first_api
 
 ROOT = REPO / '.runtime/local-worker'
 ARTIFACT = REPO / '.runtime/opencode-linux/2.0.26-musl-44f176ba'
@@ -113,10 +118,39 @@ def wsl_policy_status():
                 'freshRuntimeVerificationRequired': True, 'workloadApprovalGranted': False}
 
 
+def coding_pilot_status():
+    """Read the immutable pilot result; never query or authorize live hardware."""
+    folder = REPO / '.runtime/strata-coding-1-review/256f8be8d82772d044da1964b3d65286975d5c33dd8789b7684ab7936ca3477f'
+    try:
+        manifest, manifest_sha = record(folder / 'execution-preservation.json', 1048576)
+        result, result_sha = record(folder / 'execution-result.json', 65536)
+        if (manifest_sha != '2d98e87203e1bfabecbdc303e0b6eaf0c225fd1154a49459d4802f95bffdb23a' or
+                result_sha != manifest['executionResultSha256'] or
+                result['status'] != 'REAL_STRATA_OPENCODE_PATCH_CONFIRMED_STOPPED' or
+                result.get('codingPatchSucceeded') is not True or
+                result.get('workerStopConfirmed') is not True or
+                result.get('allFourHostProcessesExited') is not True or
+                result['integration'].get('originalUnchanged') is not True):
+            raise ValueError('Coding pilot evidence changed')
+        patch = folder / 'returned.patch'
+        if image_download.tools.sha(patch) != manifest['reviewEvidence']['returned.patch']['sha256']:
+            raise ValueError('Coding pilot patch changed')
+        return {'status': 'COMPLETE_RECORDED', 'resultFile': str(folder / 'execution-result.json'),
+                'patchFile': str(patch), 'patchBytes': patch.stat().st_size,
+                'adapter': 'live-one-file-code-to-edit', 'nativeToolCallingTested': False,
+                'syntheticInputFile': True, 'inferenceSimulated': False,
+                'attemptConsumed': True, 'modelLaunchEnabled': False, 'workerLaunchEnabled': False}
+    except (OSError, ValueError, KeyError, TypeError):
+        return {'status': 'UNCONFIRMED', 'modelLaunchEnabled': False, 'workerLaunchEnabled': False}
+
+
 def status():
     preflight = build_preflight.report()
+    linux_build = runtime_plan.build_summary()
     image = preflight['offlineSuccessorProposal']['cudaImagePreparation']
-    return {'version': 1, 'status': 'REAL_RUNTIME_BLOCKED',
+    pilot = coding_pilot_status()
+    completed = pilot['status'] == 'COMPLETE_RECORDED'
+    return {'version': 1, 'status': 'FIRST_CODING_TASK_COMPLETE_RECORDED' if completed else 'REAL_RUNTIME_BLOCKED',
             'goal': 'One on-demand Docker Strata coding task supervised by Codex',
             'modelLaunchEnabled': False, 'buildEnabled': False,
             'wslPolicy': wsl_policy_status(),
@@ -125,13 +159,17 @@ def status():
             'imageImportAdmission': import_plan.summary(),
             'isolationControls': isolation_preparation.summary(),
             'firstStrataBuild': desktop_test.summary(),
+            'cpuBuildRecovery': build_recovery.summary(),
+            'cpuBuildTiming': build_timing.summary(),
+            'firstModelApi': {'status': 'ATTEMPT_CONSUMED', 'successfulAnswerRecorded': True,
+                             'modelLaunchEnabled': False} if completed else runtime_plan.summary(),
+            'firstRealCodingTask': pilot,
+            'linuxStrataBuild': linux_build,
             'milestones': [
                 {'name': 'Integrated rehearsal', 'status': 'AVAILABLE', 'command': 'python -B local_worker.py rehearse'},
-                {'name': 'One capped CPU-only build', 'status': 'BLOCKED', 'blockers': [
-                    'Explicit CPU-source acceptance and final workload approval',
-                    'Reviewed image staging/import, disk limits and approved execution',
-                    'Reviewed Docker/WSL envelope plus fresh safety admission']},
-                {'name': 'First real local coding task', 'status': 'BLOCKED', 'blockers': [
+                {'name': 'Linux Strata build', 'status': linux_build['status'],
+                 'blockers': [] if linux_build['status'] == 'COMPLETE_RECORDED' else ['Verified Linux artifact required']},
+                {'name': 'First real local coding task', 'status': pilot['status'] if completed else 'BLOCKED', 'blockers': [] if completed else [
                     'Successful build and reviewed model/runtime configuration',
                     'Real tokenizer, gate-only networking, GPU monitoring and runtime approval']}],
             'review': {'offlinePlanSha256': preflight['offlineSuccessorProposal']['planSha256'],
@@ -234,6 +272,19 @@ def main():
     review_build = commands.add_parser('review-build')
     review_build.add_argument('--check-environment', action='store_true', help='Read-only pinned-image inspection')
     commands.add_parser('run-build')
+    commands.add_parser('prepare-build-recovery')
+    commands.add_parser('review-build-recovery')
+    commands.add_parser('run-build-recovery')
+    commands.add_parser('cancel-build-recovery')
+    commands.add_parser('prepare-build-timing')
+    commands.add_parser('review-build-timing')
+    commands.add_parser('run-build-timing')
+    commands.add_parser('cancel-build-timing')
+    commands.add_parser('prepare-model-api')
+    commands.add_parser('review-model-api')
+    commands.add_parser('run-model-api')
+    commands.add_parser('cancel-model-api')
+    commands.add_parser('review-coding-task')
     commands.add_parser('cancel-build')
     commands.add_parser('prepare-image')
     commands.add_parser('review-image')
@@ -337,14 +388,45 @@ def main():
     elif options.command == 'rehearse-image':
         with contextlib.redirect_stdout(io.StringIO()):
             result = verify_image_stage.verify()
+    elif options.command == 'prepare-build-recovery':
+        directory, packet = build_recovery.prepare()
+        result = {'status': packet['status'], 'reviewFile': str(directory / 'review.json'),
+                  'reviewSha256': build_admission.sha(packet), 'buildEnabled': False,
+                  'imageImportEnabled': False, 'imageDownloadEnabled': False, 'modelLaunchEnabled': False}
+    elif options.command == 'review-build-recovery':
+        result = build_recovery.summary()
+    elif options.command == 'run-build-recovery':
+        result = build_recovery.run()
+    elif options.command == 'prepare-build-timing':
+        directory, packet = build_timing.prepare()
+        result = {'status': packet['status'], 'reviewFile': str(directory / 'review.json'),
+                  'reviewSha256': build_admission.sha(packet), 'buildEnabled': False, 'modelLaunchEnabled': False}
+    elif options.command == 'review-build-timing':
+        result = build_timing.summary()
+    elif options.command == 'run-build-timing':
+        result = build_timing.run()
+    elif options.command == 'prepare-model-api':
+        directory, packet = runtime_plan.prepare()
+        result = {'status': packet['status'], 'reviewFile': str(directory / 'review.json'),
+                  'reviewSha256': runtime_plan.sha(packet), 'modelLaunchEnabled': False}
+    elif options.command == 'review-model-api':
+        result = runtime_plan.summary()
+    elif options.command == 'review-coding-task':
+        result = coding_pilot_status()
+    elif options.command == 'run-model-api':
+        result = first_api.run()
+    elif options.command == 'cancel-model-api':
+        result = first_api.cancel()
     elif options.command == 'run-build':
         result = first_build.run()
-    elif options.command == 'cancel-build':
-        claim = record(build_admission.LIVE / 'attempt.json')[0]
-        state = record(build_admission.LIVE / 'state.json')[0]
+    elif options.command in ('cancel-build', 'cancel-build-recovery', 'cancel-build-timing'):
+        admitter = {'cancel-build': build_admission, 'cancel-build-recovery': build_recovery,
+                    'cancel-build-timing': build_timing}[options.command]
+        claim = record(admitter.LIVE / 'attempt.json')[0]
+        state = record(admitter.LIVE / 'state.json')[0]
         if state.get('phase') in ('FAULT', 'COMPLETE'):
             raise ValueError('First-build session already terminal; no reset')
-        directory = first_build._session(build_admission.LIVE / 'sessions' / claim['sessionId'])
+        directory = first_build._session(admitter.LIVE / 'sessions' / claim['sessionId'], admitter=admitter)
         (directory / 'cancel.request').touch(exist_ok=True)
         result = {'status': 'CANCELLATION_REQUESTED', 'sessionId': claim['sessionId']}
     elif options.command == 'prepare-task':
@@ -365,7 +447,7 @@ def main():
     print(json.dumps(result, indent=2))
     if options.command in ('run-import', 'run-isolation'):
         return 3
-    if options.command in ('run-image', 'run-verification', 'run-desktop-test') and result.get('phase') != 'COMPLETE':
+    if options.command in ('run-image', 'run-verification', 'run-desktop-test', 'run-build-recovery', 'run-build-timing') and result.get('phase') != 'COMPLETE':
         return 3
     return 3 if result.get('status') in ('REAL_RUNTIME_BLOCKED', 'SOURCE_VALIDATION_BLOCKED') and options.command != 'status' else 0
 

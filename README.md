@@ -1,6 +1,6 @@
 # Local Copilot
 
-**Current next operation (18 October):** normal Docker Desktop storage is approved. The verified-image import and first CPU Strata build are connected and ready for one combined workload approval; see [the exact review](containers/strata-proposal/DESKTOP_BUILD_REVIEW.md). 338 offline tests pass. No model has run. Separate-engine rehearsals are deferred. Earlier milestone notes below are historical.
+**Current checkpoint (19 October):** Strata returned a real **READY** answer in Docker, then completed a [real Codex/OpenCode coding test](containers/model-runtime/CODING_TASK_1_RESULT.md): `VALUE = 1` -> `VALUE = 2`, with a 113-byte returned patch. Both containers exited successfully and stopped; originals stayed unchanged. Startup targets are warnings, emergency stops remain enforced. This is a narrow one-file adapter; general interactive coding remains future work. Both approvals are spent.
 
 
 This project is focused on using **Strata for local coding work** in two ways:
@@ -46,28 +46,25 @@ coding-agent workflow.
 
 Done:
 
-- Docker-based OpenCode editing has been demonstrated against scripted API
-  replies, with selected-file staging and a returned patch.
-- CUDA base-image blobs and pinned Linux build inputs have been staged and
-  verified.
-- Task boundaries, lifecycle controls and background monitoring/watchdog work
-  provide the foundation for supervised local execution.
+- Linux Strata built in Docker; executable/library exported and hash-verified.
+- Real model answer returned through the Docker API with confirmed shutdown.
+- Codex submitted one disposable file task. OpenCode made a real provider request,
+  Strata generated replacement code, and the adapter supplied that exact text to
+  OpenCode's edit tool. A 113-byte patch returned to Codex; originals were unchanged.
+- Both containers exited 0 and stopped. Existing emergency limits, monitoring,
+  leases and preservation remained enforced; startup targets became warnings.
+- 81 offline runtime/integration checks passed, separately from real execution.
 
 Left:
 
-- Make the verified base image available to the selected Docker engine and build
-  the Linux Strata executable.
-- Start the supervised Strata container and obtain a real model answer.
-- Connect OpenCode to Strata, complete one disposable coding task submitted by
-  Codex, return its patch and confirm shutdown of both components.
-- Evaluate code quality, practical usefulness and paid-token savings before
-  expanding the workflow.
+- Generalize the narrow one-file code-to-edit adapter to a useful selected task.
+- Verify native model tool-calling/full interactive provider compatibility before
+  claiming a general OpenCode coding agent.
+- Evaluate code quality and usefulness on real tasks before tuning performance.
 
-**The Docker workflow has not yet completed a real Strata model request or coding
-task.** Scripted-response tests and infrastructure rehearsals do not establish
-that the full local coding workflow works. See [the first working helper
-milestone](MVP.md) and [the current checkpoint](NEXT_STEPS.md) for implementation
-details, remaining decisions and execution requirements.
+See [the completed pilot](containers/model-runtime/CODING_TASK_1_RESULT.md),
+[the milestone](MVP.md) and [the checkpoint](NEXT_STEPS.md). No further live run
+is authorized by these results; consumed attempts and evidence remain preserved.
 
 ## Operating principles
 
@@ -90,6 +87,7 @@ details, remaining decisions and execution requirements.
 | [local_worker.py](local_worker.py) | Supervisor CLI for status, preparation, rehearsals and guarded operations |
 | [containers/worker/](containers/worker/README.md) | Selected-file task boundary, OpenCode integration and patch collection |
 | [containers/strata-proposal/](containers/strata-proposal/README.md) | Pinned Linux Strata build and runtime preparation |
+| [containers/model-runtime/](containers/model-runtime/README.md) | First real model/API test and its exact approval scope |
 | [containers/lifecycle/](containers/lifecycle/README.md) | Container lifecycle harness and shutdown validation |
 | [containers/safety/](containers/safety/README.md) | Existing monitoring, watchdog and execution-control evidence |
 | [STRATA_CONTAINER_PLAN.md](STRATA_CONTAINER_PLAN.md) | Container architecture findings and earlier planning context |

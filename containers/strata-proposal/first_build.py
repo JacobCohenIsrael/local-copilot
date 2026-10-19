@@ -15,6 +15,7 @@ import time
 import uuid
 
 import artifact_export as export
+import build_diagnostics
 import build_admission as admission
 import build_guard as guard
 import controller_session as controller
@@ -25,35 +26,35 @@ import offline_target
 import probe_image_storage
 
 
-def _session(directory):
+def _session(directory, *, admitter=admission):
     directory = Path(directory).absolute()
     export.tools.plain(directory)
-    if (directory.parent != admission.LIVE / 'sessions' or
+    if (directory.parent != admitter.LIVE / 'sessions' or
             not guard.re.fullmatch('[0-9a-f]{32}', directory.name)):
         raise ValueError('First-build session outside fixed namespace')
     return directory
 
 
-def watch(directory):
-    directory = _session(directory)
-    permit = admission.authorize()
+def watch(directory, *, admitter=admission):
+    directory = _session(directory, admitter=admitter)
+    permit = admitter.authorize()
     request = controller.read_json(directory / 'target.json')
-    claim = controller.read_json(admission.LIVE / 'attempt.json')
+    claim = controller.read_json(admitter.LIVE / 'attempt.json')
     if request['reviewSha256'] != permit.review_sha256 or claim != {
             'sessionId': directory.name, 'reviewSha256': permit.review_sha256}:
         raise ValueError('First-build claim/review mismatch')
     packet = permit.packet
     target = offline_target.from_proposal(packet['offlineDirectory'], packet['offlinePlanSha256'], request['containerId'])
     docker = guard.base.Docker()
-    admission.vm_ready(docker, packet)
+    admitter.vm_ready(docker, packet)
     feed = cpu_feed.Feed(cpu_feed.checked_directory(Path(request['readerDirectory'])), source_permit=permit)
-    with guard.base.lock(admission.LIVE / 'guard-lock'):
+    with guard.base.lock(admitter.LIVE / 'guard-lock'):
         target.inspect(docker)
         session = None
         try:
             feed.start_reader(samples=1920)
             monitor = cpu_feed.Monitor(feed)
-            session = controller.Session(admission.LIVE, directory, target, docker, monitor=monitor, permit=permit)
+            session = controller.Session(admitter.LIVE, directory, target, docker, monitor=monitor, permit=permit)
             lease = controller.Pulse(directory / 'controller.pulse', maximum=4096)
             next_pulse = 0
             while session.state['phase'] not in ('FAULT', 'COMPLETE'):
@@ -75,8 +76,8 @@ def watch(directory):
             else:
                 state = {'phase': 'FAULT', 'fault': {'code': 'READER_OR_CONTROLLER_SETUP'},
                          'synthetic': False, 'modelLaunchEnabled': False,
-                         **guard.stop_target(docker, {}, target.container_id, matcher=target.matcher)}
-                guard.base.atomic(admission.LIVE / 'state.json', state)
+                         **guard.stop_target(docker, {}, target.container_id, matcher=target.matcher, remove=False)}
+                guard.base.atomic(admitter.LIVE / 'state.json', state)
         finally:
             try:
                 if session is not None:
@@ -93,9 +94,9 @@ def watch(directory):
                     raise
 
 
-def _claim(directory, permit):
-    path = admission.LIVE / 'attempt.json'
-    if path.exists() or (admission.LIVE / 'state.json').exists() or (admission.LIVE / 'emergency.json').exists():
+def _claim(directory, permit, *, admitter=admission):
+    path = admitter.LIVE / 'attempt.json'
+    if path.exists() or (admitter.LIVE / 'state.json').exists() or (admitter.LIVE / 'emergency.json').exists():
         raise ValueError('FIRST_BUILD_ATTEMPT_ALREADY_CONSUMED')
     with path.open('x', encoding='utf-8') as stream:
         json.dump({'sessionId': directory.name, 'reviewSha256': permit.review_sha256}, stream)
@@ -103,14 +104,17 @@ def _claim(directory, permit):
         os.fsync(stream.fileno())
 
 
-def _ready(docker, target):
+def _ready(docker, target, *, timeout=1):
     """Fixed bounded file read; no compiler stdout streaming or arbitrary exec."""
     try:
         raw = docker.call('exec', '--user', '65532:65532', '--workdir', '/work', target.container_id,
-                          '/usr/bin/head', '-c', '4097', '/work/ready.json', timeout=1)
+                          '/usr/bin/head', '-c', '4097', '/work/ready.json', timeout=timeout)
     except subprocess.CalledProcessError as error:
         if 'No such file or directory' in (error.stderr or ''):
             return False
+        info = target.inspect(docker)
+        if info is not None and not info['State']['Running']:
+            return False  # Let the watchdog preserve the actual exit and logs.
         raise
     if len(raw.encode()) > 4096:
         raise ValueError('Build-ready record budget')
@@ -119,18 +123,18 @@ def _ready(docker, target):
     return True
 
 
-def run():
-    permit = admission.authorize()  # Before reader, Docker mutation or state claim.
+def run(*, admitter=admission):
+    permit = admitter.authorize()  # Before reader, Docker mutation or state claim.
     packet = permit.packet
     if os.name != 'nt' or not ctypes.windll.shell32.IsUserAnAdmin():
         raise ValueError('ADMINISTRATOR_REQUIRED_FOR_FIXED_CPU_READER')
-    _, _, plan = admission.selected()
-    if admission.source_tree(plan) != packet['sourceTree']:
+    _, _, plan = admitter.selected()
+    if admitter.source_tree(plan) != packet['sourceTree']:
         raise ValueError('Full source tree changed since review')
     offline.verified_tools(plan['toolDirectory'])
     docker = guard.base.Docker()
-    admission.vm_ready(docker, packet)
-    admission.image_ready(docker, packet)  # inspect only; never pull an absent image.
+    admitter.vm_ready(docker, packet)
+    admitter.image_ready(docker, packet)  # inspect only; never pull an absent image.
     capacity_directory = probe_image_storage.probe()
     capacity = controller.read_json(capacity_directory / 'result.json')
     if not image_plan.capacity(capacity, image_plan.storage_budget(packet['image']))['withinProposedBudgetAtProbe']:
@@ -138,14 +142,14 @@ def run():
     if (type(capacity.get('guestSwapTotalBytes')) is not int or
             capacity['guestSwapTotalBytes'] != packet['proposedVmEnvelope']['guestSwapBytes']):
         raise ValueError('REVIEWED_WSL_SWAP_SETTING_NOT_ACTIVE')
-    with guard.base.lock(admission.LIVE / 'controller-lock'):
-        directory = admission.LIVE / 'sessions' / uuid.uuid4().hex
+    with guard.base.lock(admitter.LIVE / 'controller-lock'):
+        directory = admitter.LIVE / 'sessions' / uuid.uuid4().hex
         directory.mkdir(parents=True)
-        _claim(directory, permit)
+        _claim(directory, permit, admitter=admitter)
         owned_id = target = watchdog = exporter = None
         exported, errors = [], []
         reader = cpu_feed.ROOT / uuid.uuid4().hex
-        failure_started = None
+        failure_started, parent_error = None, None
         try:
             owned_id = docker.call(*packet['createArgs'], timeout=10).strip()
             target = offline_target.from_proposal(packet['offlineDirectory'], packet['offlinePlanSha256'], owned_id)
@@ -155,7 +159,7 @@ def run():
             controller.pulse(directory / 'controller.pulse', maximum=4096)
             with (directory / 'watch.log').open('xb') as log:
                 watchdog = subprocess.Popen([sys.executable, '-B', '-E', '-s', str(Path(__file__).resolve()),
-                            '--watch-approved', str(directory)], stdout=log, stderr=subprocess.STDOUT,
+                            getattr(admitter, 'WATCH_FLAG', '--watch-approved'), str(directory)], stdout=log, stderr=subprocess.STDOUT,
                             creationflags=subprocess.CREATE_NO_WINDOW)
                 lease = controller.Pulse(directory / 'guard.pulse', maximum=4096)
                 end, next_pulse, next_ready, started, requested = time.monotonic() + packet['outerSeconds'], 0, 0, False, False
@@ -164,7 +168,7 @@ def run():
                     if now >= next_pulse:
                         controller.pulse(directory / 'controller.pulse', maximum=4096)
                         next_pulse = now + .5
-                    state_path = admission.LIVE / 'state.json'
+                    state_path = admitter.LIVE / 'state.json'
                     state = controller.read_json(state_path) if state_path.exists() else None
                     if watchdog.poll() is not None:
                         state = controller.read_json(state_path) if state_path.exists() else None
@@ -181,17 +185,19 @@ def run():
                             raise ValueError('No independently progressing watchdog before start')
                         target.inspect(guard.DeadlineDocker(docker, time.monotonic() + 1, time.monotonic))
                         # Last approval/helper check before the one allowed start.
-                        if admission.authorize() != permit:
+                        if admitter.authorize() != permit:
                             raise ValueError('Admission changed before start')
                         docker.call('start', owned_id, timeout=1)
                         started = True
                     if state and state['phase'] == 'RUNNING' and now >= next_ready and not requested:
                         next_ready = now + 1
-                        if _ready(docker, target):
+                        ready = (_ready(docker, target, timeout=packet['buildTiming']['readyQuerySeconds'])
+                                 if 'buildTiming' in packet else _ready(docker, target))
+                        if ready:
                             (directory / 'export.request').touch(exist_ok=False)
                             requested = True
                     if state and state['phase'] == 'EXPORTING' and exporter is None:
-                        transport = controller.GuardedExport(admission.LIVE, target, docker, lease, permit=permit)
+                        transport = controller.GuardedExport(admitter.LIVE, target, docker, lease, permit=permit)
                         def collect():
                             try:
                                 folder, _ = export.collect(transport, container_id=owned_id,
@@ -212,8 +218,9 @@ def run():
                     time.sleep(.1)
                 else:
                     raise TimeoutError('First-build outer deadline')
-        except BaseException:
+        except BaseException as error:
             failure_started = time.monotonic()
+            parent_error = error
             raise
         finally:
             # The parent never kills its guard before stopping the frozen target.
@@ -224,12 +231,12 @@ def run():
             safe_to_end_guard = False
             if target is not None:
                 stopped = guard.stop_target(docker, {}, target.container_id, matcher=target.matcher,
-                                            started=failure_started)
+                                            started=failure_started, remove=False)
                 safe_to_end_guard = stopped['stopConfirmed']
-                if not stopped['stopConfirmed'] or not stopped['cleanupComplete']:
-                    guard.base.atomic(admission.LIVE / 'emergency.json', {'fault': 'STOP_UNCONFIRMED', **stopped})
+                if not stopped['stopConfirmed'] or (not stopped['cleanupComplete'] and not stopped.get('retainedStoppedTarget')):
+                    guard.base.atomic(admitter.LIVE / 'emergency.json', {'fault': 'STOP_UNCONFIRMED', **stopped})
             else:
-                guard.base.atomic(admission.LIVE / 'emergency.json', {'fault': 'CREATE_OR_SETUP_UNCONFIRMED'})
+                guard.base.atomic(admitter.LIVE / 'emergency.json', {'fault': 'CREATE_OR_SETUP_UNCONFIRMED'})
             # Guard waiting/reaping is AFTER exit confirmation, so a hung guard
             # cannot consume eight seconds before the parent's emergency stop.
             if watchdog is not None and safe_to_end_guard:
@@ -242,15 +249,44 @@ def run():
                 watchdog.wait(timeout=2)
             if exporter is not None:
                 exporter.join(timeout=2)
-        state = controller.read_json(admission.LIVE / 'state.json')
+            if target is not None and safe_to_end_guard and stopped.get('retainedStoppedTarget'):
+                try:
+                    build_diagnostics.collect(directory, target, docker)
+                except Exception as error:
+                    guard.base.atomic(directory / 'diagnostic-error.json', {'type': type(error).__name__,
+                        'containerRetained': True, 'automaticRetry': False})
+            if parent_error is not None:
+                guard.base.atomic(directory / 'parent-error.json', parent_error_record(parent_error))
+        state = controller.read_json(admitter.LIVE / 'state.json')
         if (state['phase'] != 'COMPLETE' or state.get('stopConfirmed') is not True or
-                state.get('cleanupComplete') is not True or (admission.LIVE / 'emergency.json').exists() or
+                state.get('cleanupComplete') is not True or (admitter.LIVE / 'emergency.json').exists() or
                 watchdog is None or watchdog.returncode != 0):
             raise ValueError('FIRST_BUILD_FAILED_OR_STOP_UNCONFIRMED')
         return state
 
 
+def parent_error_record(error):
+    record = {'type': type(error).__name__, 'stderr': str(getattr(error, 'stderr', ''))[:4096],
+              'automaticRetry': False}
+    if isinstance(error, subprocess.TimeoutExpired):
+        record['timeoutSeconds'] = error.timeout
+        command = error.cmd if isinstance(error.cmd, (list, tuple)) else [error.cmd]
+        record['command'] = [str(part)[:256] for part in command[:24]]
+    return record
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--watch-approved', required=True)
-    watch(parser.parse_args().watch_approved)
+    choice = parser.add_mutually_exclusive_group(required=True)
+    choice.add_argument('--watch-approved')
+    choice.add_argument('--watch-recovery')
+    choice.add_argument('--watch-timing')
+    args = parser.parse_args()
+    if args.watch_timing:
+        import build_timing
+        watch(args.watch_timing, admitter=build_timing)
+    elif args.watch_recovery:
+        import build_recovery
+        watch(args.watch_recovery, admitter=build_recovery)
+    else:
+        watch(args.watch_approved)

@@ -60,13 +60,25 @@ class WorkerCliTests(unittest.TestCase):
             self.assertEqual(worker.main(), 3)
 
     def test_read_only_status_cannot_promote_synthetic_proofs_to_authority(self):
-        with patch.object(worker, 'latest_cpu', return_value={}), patch.object(worker, 'latest', return_value={
+        with patch.object(worker, 'coding_pilot_status', return_value={'status': 'UNCONFIRMED'}), \
+                patch.object(worker, 'latest_cpu', return_value={}), patch.object(worker, 'latest', return_value={
                 'status': 'PATCH_FOR_REVIEW_SYNTHETIC'}):
             result = worker.status()
         self.assertEqual(result['status'], 'REAL_RUNTIME_BLOCKED')
         self.assertFalse(result['buildEnabled'])
         self.assertFalse(result['modelLaunchEnabled'])
         self.assertEqual(len(result['milestones']), 3)
+
+    def test_recorded_real_pilot_reports_completion_without_launch_authority(self):
+        with patch.object(worker, 'coding_pilot_status', return_value={
+                'status': 'COMPLETE_RECORDED', 'modelLaunchEnabled': False, 'workerLaunchEnabled': False}), \
+                patch.object(worker, 'latest_cpu', return_value={}), patch.object(worker, 'latest', return_value={}):
+            result = worker.status()
+        self.assertEqual(result['status'], 'FIRST_CODING_TASK_COMPLETE_RECORDED')
+        self.assertEqual(result['milestones'][2]['status'], 'COMPLETE_RECORDED')
+        self.assertFalse(result['buildEnabled'])
+        self.assertFalse(result['modelLaunchEnabled'])
+        self.assertFalse(result['firstRealCodingTask']['workerLaunchEnabled'])
 
     def test_cancel_rejects_a_finished_or_foreign_run(self):
         directory = self.root / ('a' * 32)
