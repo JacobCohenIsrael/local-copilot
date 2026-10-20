@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-model-api-test",
+  "scope": "one-fibonacci-246-input-gpu-warn-above87-stop90-other-limits-unchanged",
+  "reviewSha256": "1359b55a4774dd2283e9c5887b8c4746bff033b87fb27211365d66df8ca4080d",
+  "acceptPolicySha256": "21b1d30f7b7ff7670bab160c14f52f1a359285464bc1099542d4b7957ad7472e",
+  "acceptStartupTargetChange": {
+    "targets": "cpu-temperature,gpu-temperature,gpu-power,vram,host-free-ram",
+    "from": "blocking-ten-second-target-baseline",
+    "to": "warnings-with-ten-second-valid-telemetry",
+    "emergencyStops": "unchanged-from-eighth-attempt"
+  },
+  "acceptStartupStatusChange": {
+    "coordination": "skip-periodic-inspect-only-during-one-guard-granted-start",
+    "dockerStartSeconds": 1.5,
+    "periodicInspectSeconds": 1,
+    "handoffSeconds": 2.5,
+    "handoffBudgetSource": "existing-controller-guard-lease",
+    "modelDeadlineAnchor": "guard-grant-before-container-start",
+    "telemetryAndLeasesContinue": true,
+    "automaticRetry": false
+  },
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 900
+  },
+  "acceptFileAccessChange": {
+    "statePublication": "immutable-sequenced-snapshots-no-replacement",
+    "stateRead": "single-read-share-read-delete-not-write",
+    "maximumStateRecords": 16,
+    "maximumStateBytes": 16384,
+    "parentErrorDetails": "bounded-operation-message-errno-winerror-filenames-traceback",
+    "automaticRetries": false,
+    "permissionChanges": false
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptGpuTemperatureChange": {
+    "previousStopC": 75,
+    "stopC": 90,
+    "previousAdvisoryStartupC": 60,
+    "startupAdvisoryC": 87,
+    "warnAboveC": 87,
+    "warningComparison": ">",
+    "stopComparison": ">=",
+    "runtimeWarnings": true,
+    "warningEvidenceRecordsMaximum": 1,
+    "rawTemperatureReadingsRetained": true,
+    "otherLimitsUnchanged": true
+  },
+  "acceptRetainedStoppedContainer": true,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": true,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": "We've already established that we're not stopping, only warning.\nChange GPU HOT threshold to 90 and only warn above 87.\nThen rerun the test."
+}

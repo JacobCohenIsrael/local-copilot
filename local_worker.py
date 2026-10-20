@@ -285,6 +285,19 @@ def main():
     commands.add_parser('run-model-api')
     commands.add_parser('cancel-model-api')
     commands.add_parser('review-coding-task')
+    for action in ('prepare', 'review', 'run', 'cancel'):
+        commands.add_parser(action + '-useful-coding-task')
+        commands.add_parser(action + '-useful-coding-task-recovery')
+        commands.add_parser(action + '-useful-coding-task-timing')
+        commands.add_parser(action + '-useful-coding-task-statement')
+        commands.add_parser(action + '-useful-coding-task-compact')
+        commands.add_parser(action + '-useful-coding-task-ram')
+        commands.add_parser(action + '-useful-coding-task-ram30')
+        commands.add_parser(action + '-context-16k-coding-probe')
+        commands.add_parser(action + '-simple-function-test')
+        commands.add_parser(action + '-extended-fibonacci-test')
+        commands.add_parser(action + '-double-input-fibonacci-test')
+        commands.add_parser(action + '-gpu90-fibonacci-test')
     commands.add_parser('cancel-build')
     commands.add_parser('prepare-image')
     commands.add_parser('review-image')
@@ -413,6 +426,78 @@ def main():
         result = runtime_plan.summary()
     elif options.command == 'review-coding-task':
         result = coding_pilot_status()
+    elif options.command.endswith('-gpu90-fibonacci-test'):
+        import simple_function_gpu90 as gpu90
+        gpu90.activate()
+        action = options.command.split('-')[0]
+        result = (gpu90.prepare() if action == 'prepare' else gpu90.summary() if action == 'review'
+                  else gpu90.task.history.task.coding.first_api.cancel() if action == 'cancel' else gpu90.run())
+    elif options.command.endswith('-double-input-fibonacci-test'):
+        import simple_function_double as doubled
+        doubled.activate()
+        action = options.command.split('-')[0]
+        result = (doubled.prepare() if action == 'prepare' else doubled.summary() if action == 'review'
+                  else doubled.task.history.task.coding.first_api.cancel() if action == 'cancel' else doubled.run())
+    elif options.command.endswith('-extended-fibonacci-test'):
+        import simple_function_extended as extended
+        extended.activate()
+        action = options.command.split('-')[0]
+        result = (extended.prepare() if action == 'prepare' else extended.summary() if action == 'review'
+                  else extended.prior.history.task.coding.first_api.cancel() if action == 'cancel' else extended.run())
+    elif options.command.endswith('-simple-function-test'):
+        import simple_function as simple
+        simple.activate()
+        action = options.command.split('-')[0]
+        result = (simple.prepare() if action == 'prepare' else simple.summary() if action == 'review'
+                  else simple.history.task.coding.first_api.cancel() if action == 'cancel' else simple.run())
+    elif options.command.endswith('-context-16k-coding-probe'):
+        import context_16k as context16
+        context16.activate()
+        action = options.command.split('-')[0]
+        result = (context16.prepare() if action == 'prepare' else context16.summary() if action == 'review'
+                  else context16.task.coding.first_api.cancel() if action == 'cancel' else context16.run())
+    elif options.command.endswith('-useful-coding-task-ram30'):
+        import coding_task_2_ram30 as ram30
+        ram30.activate()
+        action = options.command.split('-')[0]
+        result = (ram30.prepare() if action == 'prepare' else ram30.summary() if action == 'review'
+                  else ram30.task.coding.first_api.cancel() if action == 'cancel' else ram30.run())
+    elif options.command.endswith('-useful-coding-task-ram'):
+        import coding_task_2_ram as ram
+        ram.activate()
+        action = options.command.split('-', 1)[0]
+        result = (ram.prepare() if action == 'prepare' else ram.summary() if action == 'review'
+                  else ram.task.coding.first_api.cancel() if action == 'cancel' else ram.run())
+    elif options.command.endswith('-useful-coding-task-compact'):
+        import coding_task_2_compact as compact
+        compact.activate()
+        action = options.command.split('-', 1)[0]
+        result = (compact.prepare() if action == 'prepare' else compact.summary() if action == 'review'
+                  else compact.task.coding.first_api.cancel() if action == 'cancel' else compact.run())
+    elif options.command.endswith('-useful-coding-task-statement'):
+        import coding_task_2_statement as statement
+        statement.activate()
+        action = options.command.split('-', 1)[0]
+        result = (statement.prepare() if action == 'prepare' else statement.summary() if action == 'review'
+                  else statement.task.coding.first_api.cancel() if action == 'cancel' else statement.run())
+    elif options.command.endswith('-useful-coding-task-timing'):
+        import coding_task_2_timing as timing
+        timing.activate()
+        action = options.command.split('-', 1)[0]
+        result = (timing.prepare() if action == 'prepare' else timing.summary() if action == 'review'
+                  else timing.recovery.task.coding.first_api.cancel() if action == 'cancel' else timing.run())
+    elif options.command.endswith('-useful-coding-task-recovery'):
+        import coding_task_2_recovery as recovery
+        recovery.activate()
+        action = options.command.split('-', 1)[0]
+        result = (recovery.prepare() if action == 'prepare' else recovery.summary() if action == 'review'
+                  else recovery.task.coding.first_api.cancel() if action == 'cancel' else recovery.run())
+    elif options.command.endswith('-useful-coding-task'):
+        import coding_task_2 as useful
+        useful.activate()
+        action = options.command.split('-', 1)[0]
+        result = (useful.prepare() if action == 'prepare' else useful.summary() if action == 'review'
+                  else useful.coding.first_api.cancel() if action == 'cancel' else useful.coding.run())
     elif options.command == 'run-model-api':
         result = first_api.run()
     elif options.command == 'cancel-model-api':
@@ -445,6 +530,10 @@ def main():
         result = {'status': 'REAL_RUNTIME_BLOCKED', 'reason': 'Complete the build and runtime approval gates',
                   'buildEnabled': False, 'modelLaunchEnabled': False}
     print(json.dumps(result, indent=2))
+    if options.command in ('run-simple-function-test','run-extended-fibonacci-test','run-double-input-fibonacci-test','run-gpu90-fibonacci-test') and result.get('status') != 'STRATA_SIMPLE_FUNCTION_PASSED':
+        return 3
+    if options.command in ('run-useful-coding-task', 'run-useful-coding-task-recovery', 'run-useful-coding-task-timing', 'run-useful-coding-task-statement', 'run-useful-coding-task-compact', 'run-useful-coding-task-ram', 'run-useful-coding-task-ram30', 'run-context-16k-coding-probe') and result.get('status') != 'REAL_STRATA_CODING_PATCH_FOR_REVIEW':
+        return 3
     if options.command in ('run-import', 'run-isolation'):
         return 3
     if options.command in ('run-image', 'run-verification', 'run-desktop-test', 'run-build-recovery', 'run-build-timing') and result.get('phase') != 'COMPLETE':

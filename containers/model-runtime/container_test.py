@@ -14,6 +14,7 @@ REQUEST = {'model': 'qwen3.8-flash-next-coder-iq1_m', 'messages': [
     {'role': 'user', 'content': 'Reply with READY. No explanation.'}],
     'max_tokens': 8, 'temperature': 0, 'stream': False, 'reasoning_effort': 'none'}
 MAX_RESPONSE = 16384
+REQUEST_SECONDS = 90
 
 
 def qualify_environment(root=Path('/')):
@@ -129,9 +130,9 @@ def main():
         request = urllib.request.Request('http://127.0.0.1:8080/v1/chat/completions',
             data=json.dumps(request_data).encode(), headers={'Content-Type': 'application/json'}, method='POST')
         result['requestsSubmitted'] = 1
-        request_deadline[0] = time.monotonic() + 90
+        request_deadline[0] = time.monotonic() + REQUEST_SECONDS
         # Exactly one inference request, no retry on a socket/HTTP error.
-        with opener.open(request, timeout=90) as response:
+        with opener.open(request, timeout=REQUEST_SECONDS) as response:
             raw = response.read(MAX_RESPONSE + 1)
             if response.status != 200 or len(raw) > MAX_RESPONSE: raise ValueError('API_RESPONSE_BUDGET')
         answer = validate_response(json.loads(raw),request_data['max_tokens'])

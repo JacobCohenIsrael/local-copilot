@@ -12,20 +12,22 @@ ROOT = Path(__file__).resolve().parents[2] / '.runtime' / 'bundle-rehearsals'
 TASK = 'Only change example.py from VALUE = 1 to VALUE = 2. Do not run commands or access other files.'
 
 
-def import_output(run_id, files):
+def import_output(run_id, files, selected='example.py'):
     """Validate all output before writing ONLY the disposable bundle copy."""
     if bundle.collect(run_id)['changedFiles']:
         raise ValueError('PRISTINE_BUNDLE_REQUIRED')
-    if not isinstance(files, dict) or set(files) != {'example.py'}:
+    selected = str(bundle.safe_path(selected))
+    manifest = bundle.read_json(bundle.ROOT / run_id / 'manifest.json')
+    if selected not in manifest['files'] or not isinstance(files, dict) or set(files) != {selected}:
         raise ValueError('UNEXPECTED_EXPORTED_PATH')
-    encoded = files['example.py']
+    encoded = files[selected]
     if not isinstance(encoded, str) or len(encoded) > 4 * ((bundle.MAX_FILE_BYTES + 2) // 3):
         raise ValueError('EXPORTED_FILE_BUDGET')
     data = base64.b64decode(encoded, validate=True)
     if len(data) > bundle.MAX_FILE_BYTES:
         raise ValueError('EXPORTED_FILE_BUDGET')
     bundle.text_file(data)
-    destination = bundle.plain(bundle.ROOT / run_id / 'workspace/example.py')
+    destination = bundle.plain(bundle.ROOT / run_id / 'workspace' / selected)
     destination.write_bytes(data)
     return bundle.collect(run_id)
 

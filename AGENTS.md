@@ -1,73 +1,89 @@
 # Local Copilot: agent guidance
 
-## Purpose and focus
+## Purpose and current direction (20 October 2026)
 
-Use Strata in Docker for local coding, both directly and as a bounded helper for
-Codex (Claude later). OpenCode is the coding worker; the supervisor stages selected
-files, returns a patch and structured result, and stops the local components.
+Prove Strata can do useful coding work alongside Codex with less paid supervision.
+OpenCode edits selected disposable files; the supervisor returns a patch and
+structured result and confirms owned shutdown. Claude support is later.
 
-Build on the proven Docker answer and one-file coding pilot. Prioritize useful
-Codex-submitted tasks with returned patches and confirmed shutdown; do not repeat
-the completed READY/toy tests without a concrete reason. Reuse existing guards. Defer sensor
-research, private-engine rehearsals, tuning, MCP and UI unless a concrete blocker
-requires them. The Ollama assistant and JetBrains plugin are retired; retain the
-independent TypeScript Strata simulator. Do not restore retired components unless
-the owner changes direction.
+**Active milestone: [one 30-minute coding viability test](VIABILITY_POC.md).**
+Fix the real negative-read-limit bug in `containers/worker/task_bundle.py` and
+have Strata add regression tests in `containers/worker/test_task_bundle.py`.
+Strata receives source and behavior requirements, supplies implementation and
+tests; Codex stages, validates and reviews without supplying/repairing the fix.
+The previous fixed-guard adapter does not satisfy this contract.
 
-## Current checkpoint (19 October 2026)
+- Maximum 10 minutes handoff preparation, 15 minutes execution including startup
+  and confirmed shutdown, 5 minutes validation/report. One request, no retry,
+  restart, continuation, fault reset or deadline extension. Not ready by the
+  preparation cutoff is failure, not permission for more infrastructure work.
+- All acceptance conditions in VIABILITY_POC.md must pass. On failure recommend
+  stopping investment in this Docker approach. On success consider one further
+  representative task, with no automatic batch. Token savings require comparison;
+  record actual per-task paid input/output when available, never invent savings.
+- Use 16K context/up to 4K output with relevant source, no padding. The old 512-input
+  target and Fibonacci/doubling ladder are superseded. Do not repeat READY/toy
+  tests. Hermes/64K, tuning, sensor research, private engines, MCP and UI are deferred.
+- Documentation/policy alignment is offline work, not an executed coding attempt.
+  Start the 30-minute clock when implementing the task handoff; include all its
+  preparation. Do not restart that clock across chats.
 
-- Done: Linux CPU build 153/153, exported/hash-verified artifacts. Real Strata
-  Docker answer **READY** (19 prompt/2 output tokens), followed by one real
-  Codex-submitted OpenCode edit: `VALUE = 1` -> `VALUE = 2`, returned 113-byte patch.
-- Done: [coding result](containers/model-runtime/CODING_TASK_1_RESULT.md). Real
-  model response supplied the replacement; OpenCode's edit tool applied it.
-  Both containers exit 0/stopped; originals unchanged. This narrow host-brokered
-  one-file adapter does not establish general/native model tool calling.
-- Startup targets now warn; CPU emergency stop remains 97 C and all other
-  emergency stops remain enforced. Startup coordination exercised live. 81 offline
-  runtime/integration checks passed, separately from the two successful live runs.
-- Next: review the pilot patch and choose a small useful task before generalizing
-  the adapter. Plan separately approved, incremental context-capacity tests toward
-  64K; consider Hermes only after real capacity is proven. See the
-  [Hermes context plan](containers/model-runtime/HERMES_CONTEXT_PLAN.md).
-  Ten model attempts (nine API, one coding) are consumed/preserved;
-  both current approvals are spent. No retry/reset or new workload approved.
-  Preserve the inactive 95/98 C proposal and all historical settings/evidence.
+## Owner-approved resource warnings
 
-## Execution boundaries
+Latest owner direction explicitly accepts crash risk and replaces software
+resource stops with warnings for the NEW coding viability scope. Do not ask
+again for that policy change. Use `runtime_safety.viability_policy(base)` and
+bind the complete policy to the fresh scope in both controller and watchdog.
 
-- Target: Windows laptop, RTX 3080 Ti 16 GB VRAM, 32 GB RAM; an earlier sustained
-  Strata workload caused an unexplained shutdown. Preserve existing installations,
-  model files and configurations. Obtain explicit approval for live workloads,
-  model/GPU tests, safety-policy changes, firmware or power-setting changes.
-  Reuse existing scoped approvals; do not ask again for already-approved policy.
-- CPU-build admission stays at or below 92 C for ten seconds; stop at 97 C.
-  Model/API startup targets are advisory by owner instruction: CPU 94 C, GPU
-  60 C/40 W/4096 MiB and host free RAM 8192 MiB. Require ten seconds of valid
-  telemetry without resetting for target exceedances; save startup warnings.
-  Keep CPU 97 C and all eighth-scope emergency stops enforced. WSL has
-  1 CPU, 6 GiB and no swap; compiler/API containers use 1 CPU and 4 GiB,
-  compiler one job. A consumed approval never authorizes another attempt.
-  The older 95/98 C proposal is inactive; CPU-build policy is unchanged.
-  CPU firmware freshness/calibration and throttle status have documented
-  limitations; never invent readings or extend scope-specific acceptance.
-- Keep task/context/file/output limits, fresh telemetry, independent watchdogs,
-  owned stopping and latched faults. No automatic retries or fault resets.
-  Simulated success is not proof of real execution or confirmed shutdown.
-- Preserve `.runtime/`, cached blobs, approvals, raw readings, consumed attempts
-  and reviewed snapshots. Never overwrite historical evidence or reuse spent
-  decisions. The failed native rehearsal left an unstarted container and bare
-  attached disk: no detach, reuse, deletion or global Docker/WSL stop is authorized.
+CPU >=94 C, GPU >=87 C, used RAM >=30,720 MiB, GPU power >=100 W and VRAM
+>=14,336 MiB warn and continue. CPU 97 C/GPU 90 C are no longer stop points in
+this profile; reported active thermal throttling also warns. Observe rolling
+30-second trends (current/min/max/mean/delta/direction/actual span), report every
+five seconds and retain raw telemetry. Neither spikes nor sustained resource
+crossings stop this scope. This is advisory monitoring, not crash prevention.
 
-## Working conventions
+Keep fixed deadlines, cancellation, fresh/valid telemetry, leases, AC requirement,
+isolation/ownership, file/context/output limits, process-health checks and owned
+shutdown. OOM/process failure still ends the attempt. Keep physical protections
+and existing WSL (one CPU/6 GiB/no swap) and container limits (model one CPU/4 GiB,
+worker 0.5 CPU/512 MiB). No firmware/power/fan changes, extra readiness gate,
+download, rebuild or automatic tuning. CPU-build policy remains 92/97 C.
 
-- Complete integrated milestones; report short Done/Left bullets and distinguish
-  simulated validation from real execution. Do not track account usage limits.
-- Main CLI: `python -B local_worker.py`; `status` reads recorded readiness.
-  `npm start` runs the simulator only. Relevant offline checks are Python proposal
-  tests under `containers/strata-proposal/` and `npm test` for the simulator;
-  real readers, imports, compilation and models are separate approved operations.
-- Keep this file compact: durable rules and one current checkpoint only. Replace
-  stale checkpoint text rather than appending session logs. Put detailed results
-  in operation reviews or history. The [archived agent notes](docs/history/AGENT-2026-10-18.md)
-  are reference material, not required startup reading or current authorization.
+Do not retrofit this profile into consumed historical scopes, frozen sources,
+manual chat (separate owner session), simulator or CPU-build approvals. Shared
+runtime defaults stay strict for old scopes; the new coding scope must explicitly
+select the advisory profile. Do not present it as already exercised live.
+
+## Current evidence and authorization
+
+- Linux CPU build 153/153; real READY answer; tiny OpenCode pilot returned a
+  113-byte patch with confirmed shutdown. Useful coding delegation remains unproven.
+- Nineteen model attempts consumed. Fibonacci eventually passed once; subsequent
+  doubled-input scopes stopped at historical GPU75 and then RAM30 limits. Latest
+  GPU90 run: HOST_RAM_HIGH at 30,757.53 MiB, GPU peak 64 C, no response/evaluation;
+  model 137/PID 0, four helpers exited. See the historical
+  [GPU90 review/result](containers/model-runtime/FIBONACCI_GPU90_REVIEW.md).
+- Every executed approval is spent. The latest owner message authorizes the new
+  warning policy. Use a fresh workload decision/namespace for the new task and
+  honor direct owner workload authorization without requesting it again. Never
+  reuse old approvals, reset faults or claim an offline test is real inference.
+- Preserve `.runtime/`, cached blobs, raw readings, failed scopes, exact executed
+  sources and retained containers. No deletion/reuse/detach of the old bare disk
+  or global Docker/WSL stop. Original installations/models/configurations stay intact.
+- Historical firmware/calibration/CPU-throttle limitations remain documented;
+  aggregate RAM attribution and general native tool calling remain unproven.
+
+## Working conventions and handover
+
+Read this file, [VIABILITY_POC.md](VIABILITY_POC.md), then
+[NEXT_STEPS.md](NEXT_STEPS.md). They are current. Dated operation reviews/results,
+old handoffs and [pre-pivot snapshots](docs/history/pre-viability-2026-10-20/)
+are evidence, not active instructions. Never inherit their pending approvals or
+Fibonacci/context ladders. Update one current checkpoint instead of appending logs.
+
+Main CLI: `python -B local_worker.py`; `status` reads recorded state only.
+`npm start` is the independent TypeScript simulator. Use focused offline checks
+for changed guards/worker behavior; do not rerun unrelated suites or live probes
+as preparation. Distinguish offline checks from real execution. Report short
+Done/Left bullets and actual limitations; do not track account usage limits.
+The Ollama assistant and JetBrains plugin remain retired.

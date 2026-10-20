@@ -101,11 +101,16 @@ class ConnectedStartupTests(unittest.TestCase):
             permit=SimpleNamespace(review_sha256=SHA,packet={})
             def snapshot():
                 hot=mode=='gpu_hot' and start_at[0] is not None and now[0]-start_at[0]>=.3
+                if mode=='advisory':
+                    return gpu(1000+now[0],gpuTemperatureC=95,gpuPowerW=140,
+                               vramUsedMiB=16000,ramUsedMiB=31500,gpuThermalThrottling=True)
                 return gpu(1000+now[0],gpuTemperatureC=75 if hot else 55)
             original_gate=first_api.safety.Gate;gates=[]
             def gate_factory():
                 gate=original_gate();gates.append(gate);return gate
             with patch.object(plan,'LIVE',root),patch.object(plan,'authorize',return_value=permit),\
+                    patch.object(first_api.safety,'POLICY',first_api.safety.viability_policy(
+                        {**first_api.safety.POLICY,'modelSeconds':2}) if mode=='advisory' else first_api.safety.POLICY),\
                     patch.object(first_api,'target',return_value=owned),\
                     patch.object(first_api.guard.base,'Docker',return_value=Mock()),\
                     patch.object(first_api.cpu_feed,'Feed',return_value=feed),\
@@ -134,6 +139,15 @@ class ConnectedStartupTests(unittest.TestCase):
             elif mode=='lease':self.assertEqual(state['fault'],{'code':'CONTROLLER_LEASE_EXPIRED'})
             elif mode=='cancel':self.assertEqual(state['fault'],{'code':'CANCELLED'})
             elif mode=='not_running':self.assertEqual(state['fault'],{'code':'MODEL_START_RETURNED_NOT_RUNNING'})
+            elif mode=='advisory':
+                self.assertEqual(state['fault'],{'code':'MODEL_DEADLINE'})
+                self.assertTrue(any(s['phase']=='RUNNING' for s in states))
+                report=json.loads((session/'resource-trends.json').read_text())
+                self.assertEqual(report['mode'],'warnings-only')
+                self.assertIn('ramUsedMiB',report['warnings'])
+                final=json.loads((session/'guard-result.json').read_text())
+                self.assertIn('gpuThermalThrottling',final['resourceObservations']['warnings'])
+                self.assertFalse(final['resourceObservations']['deadlinesRenewed'])
             else:
                 self.assertEqual(state['fault'],{'code':'MODEL_WATCH_ERROR'})
                 expected={'stalled':'HANDOFF_DEADLINE','bad_receipt':'RECEIPT_INVALID',
@@ -153,6 +167,9 @@ class ConnectedStartupTests(unittest.TestCase):
     def test_post_start_inspect_timeout_is_not_hidden_or_retried(self):self.exercise('post_timeout')
     def test_contract_drift_still_faults_after_start(self):self.exercise('drift')
     def test_success_receipt_without_running_container_is_a_fault(self):self.exercise('not_running')
+    def test_advisory_resources_continue_through_start_and_save_trends_until_deadline(self):
+        with patch('builtins.print'):
+            self.exercise('advisory')
 
 
 if __name__=='__main__':unittest.main()

@@ -1,19 +1,21 @@
-# Strata Docker answer and coding pilot
+# Strata coding runtime
 
-Current results: [real READY answer](STARTUP_WARNINGS_API_RESULT.md) and
-[real Codex/OpenCode patch](CODING_TASK_1_RESULT.md). Both completed with exit 0
-and confirmed stopping. Startup targets now warn; CPU emergency stop stays 97 C
-and all other emergency controls remain enforced. The inactive 95/98 C proposal
-is retained as history.
+Current direction: [one 30-minute real coding task](../../VIABILITY_POC.md).
+The owner approved warnings rather than resource stops for new coding scopes.
+`runtime_safety.viability_policy(base)` selects this explicit profile; `Gate`
+records rolling 30-second observations, while `first_api` saves/reports them every
+five seconds and includes them in final guard state. CPU/GPU temperatures, RAM,
+power, VRAM and reported active throttling are advisory. Sustained crossings warn
+as well. Invalid/missing monitoring, cancellation, deadlines, process failure,
+isolation and owned shutdown remain enforced. Physical/container limits stay.
 
-The narrow host-brokered adapter lets OpenCode request an edit, Strata generate
-replacement code, and OpenCode apply that exact code. It returns a patch without
-changing originals. Native tool calling and general interactive coding remain
-unproven. Both latest scopes are consumed; no further workload is authorized.
-See [coding review](CODING_TASK_1_REVIEW.md).
+This is offline-tested support, not an executed coding workload. The new coding
+handoff must bind the policy in both processes and honor the total 30-minute
+budget. Default/historical policies remain strict; consumed approvals cannot be
+reused. The fixed-guard adapter does not satisfy the new task contract.
 
-Earlier preparation notes below are historical, including references to previously
-pending approvals and blocking startup targets.
+Older notes below are historical, including pending approvals and READY tests.
+Read [AGENTS.md](../../AGENTS.md) and [NEXT_STEPS.md](../../NEXT_STEPS.md) first.
 
 ## Historical API preparation
 

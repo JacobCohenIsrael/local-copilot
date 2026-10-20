@@ -1,3 +1,9 @@
+> Current direction (20 October): follow [VIABILITY_POC.md](VIABILITY_POC.md). One real
+> coding task within 30 minutes; new coding scopes use resource warnings/trends.
+> The notes below describe historical or deferred work, not next-step instructions.
+> Their strict thresholds, pending approvals and context ladders do not override
+> the current contract. Preserve historical evidence and CPU-build policies.
+
 # Strata container readiness — read-only findings
 
 Checked 16 October 2026. This is a plan, not an activated live policy. The initial file audit ran no container. A subsequent bounded CPU-only diagnostic passed as recorded below; no Strata process, model load, CUDA build, GPU command, or hardware sensor query was run. Existing Strata files were only read. The inspected model files were located through Strata's own configuration; Ollama was not used.

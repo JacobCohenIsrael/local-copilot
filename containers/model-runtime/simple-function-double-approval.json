@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "status": "owner-approved-one-model-api-test",
+  "scope": "one-fibonacci-246-input-16k-context-4k-output-900s-request-1200s-model",
+  "reviewSha256": "86755db0f8e6477bfe036a7847be3eca2a49cec831fa9ab3079632e8101d0f06",
+  "acceptPolicySha256": "23d2c83939df65c8b942fc38147308f9b95a741f5fcf11168d620332232fa0bb",
+  "acceptStartupTargetChange": {
+    "targets": "cpu-temperature,gpu-temperature,gpu-power,vram,host-free-ram",
+    "from": "blocking-ten-second-target-baseline",
+    "to": "warnings-with-ten-second-valid-telemetry",
+    "emergencyStops": "unchanged-from-eighth-attempt"
+  },
+  "acceptStartupStatusChange": {
+    "coordination": "skip-periodic-inspect-only-during-one-guard-granted-start",
+    "dockerStartSeconds": 1.5,
+    "periodicInspectSeconds": 1,
+    "handoffSeconds": 2.5,
+    "handoffBudgetSource": "existing-controller-guard-lease",
+    "modelDeadlineAnchor": "guard-grant-before-container-start",
+    "telemetryAndLeasesContinue": true,
+    "automaticRetry": false
+  },
+  "acceptRequestTimingChange": {
+    "setting": "engine_silence_s",
+    "from": 30,
+    "to": 75,
+    "hardRequestDeadlineSeconds": 900
+  },
+  "acceptFileAccessChange": {
+    "statePublication": "immutable-sequenced-snapshots-no-replacement",
+    "stateRead": "single-read-share-read-delete-not-write",
+    "maximumStateRecords": 16,
+    "maximumStateBytes": 16384,
+    "parentErrorDetails": "bounded-operation-message-errno-winerror-filenames-traceback",
+    "automaticRetries": false,
+    "permissionChanges": false
+  },
+  "acceptSourceLimitation": "ASUS endpoint and changing-value evidence are reused, but firmware refresh/calibration and CPU throttle are unverified. Accept these limitations for one bounded model/API test only; this is a new scope, not inherited CPU-build approval.",
+  "acceptSourceReviewSha256": "56a94d0f4f1dd13062078a2d7326bd4fd7e64749ab0268de6790c80fc8d0749f",
+  "acceptLimitations": [
+    "Memory fit and Linux/GPU compatibility are unproven; OOM/time/guard failures end this one attempt.",
+    "GPU power/VRAM limits are monitored stop thresholds, not hard GPU quotas or hardware power settings.",
+    "Driver/host/daemon/suspend failure can prevent software stopping; shared-Docker cancellation limitations remain.",
+    "Existing large model file contents are not fully hashed; read-only mounts and metadata checks cannot exclude same-metadata external mutation."
+  ],
+  "acceptRetainedStoppedContainer": true,
+  "maximumAttempts": 1,
+  "modelLaunchEnabled": true,
+  "synthetic": false,
+  "workerLaunchEnabled": false,
+  "buildEnabled": false,
+  "imageDownloadEnabled": false,
+  "imageImportEnabled": false,
+  "ownerMessage": "Approved\u2014run the 246-token Fibonacci test once with 16K context, up to 4K output, and the same deadlines and safety limits. Preserve the response and evidence, independently confirm shutdown, and don't edit the repository or retry."
+}

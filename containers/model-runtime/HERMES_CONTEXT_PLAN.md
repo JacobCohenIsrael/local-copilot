@@ -1,6 +1,13 @@
+> Current direction (20 October): follow [VIABILITY_POC.md](../../VIABILITY_POC.md). One real
+> coding task within 30 minutes; new coding scopes use resource warnings/trends.
+> The notes below describe historical or deferred work, not next-step instructions.
+> Their strict thresholds, pending approvals and context ladders do not override
+> the current contract. Preserve historical evidence and CPU-build policies.
+
 # Hermes consideration gate: prove usable 64K context first
 
-Decision recorded 19 October 2026. **Planning only; no new workload approved.**
+Decision recorded 19 October, updated by owner direction 20 October 2026.
+**Preparation only; no new workload or automatic search batch approved.**
 
 ## Decision and purpose
 
@@ -31,18 +38,32 @@ That short request does not prove that even the full 512-token window was used.
 No larger context capacity, 64K execution or Hermes compatibility is established.
 The narrow host-brokered edit also does not establish general model tool calling.
 
-## Incremental capacity work
+## Direct 16K start and result-driven search
 
 1. Review the pilot and select a useful small coding task. Keep the existing
    supervisor, OpenCode worker, selected-file staging and returned-patch boundary.
-2. Prepare a bounded capacity operation at the current or next modest context
-   size. Review the model's supported context, runtime arguments, memory needs,
-   actual tokenized input, output reserve, request deadline and total lifetime
-   offline before requesting approval for live execution.
-3. Increase context only after reviewing the preceding real result and confirming
-   shutdown. A possible planning sequence is 512 -> 1,024 -> 2,048 -> 4,096 ->
-   8,192 -> 16,384 -> 32,768 -> 65,536. These are candidate checkpoints, not an
-   approved batch, automatic schedule or obligation to run every size.
+2. Start directly at **16,384 context tokens**, one quarter of the 65,536 goal.
+   The owner explicitly replaced the small-step ladder with doubling/halving.
+   The owner subsequently selected **up to 4,096 output tokens** and an initial
+   **roughly 512-token input budget**, using a simple function before adding
+   requirements. Fibonacci/dynamic programming was an example. Use meaningful
+   instructions/source rather than padding to an exact token count. The earlier
+   [64-output proposal](CONTEXT_16K_REVIEW.md) is superseded, preserved and unrun.
+   A fresh runnable scope is still needed. No readiness gate is added.
+3. Begin with the simple task, then increase input budget 512 -> 1K -> 2K -> 4K
+   -> 8K as results justify it, holding the 16K context and 4K output ceiling
+   fixed. At this context the hard input maximum is 12,280 tokens including
+   template/instructions, after reserving output and eight-token slack. When
+   more context is needed, consider 32K then 64K; halve or refine a capacity
+   bracket when evidence supports it. The owner rejected a small-step ladder
+   for configured context, not small initial actual requests.
+   Keep allocation, actual input use, response quality and timing results separate.
+   A deadline or wrong answer is not proof of a memory-capacity boundary.
+   The 4K output limit is a ceiling, not a requirement to generate 4K. Exact
+   input counts, natural completion, correctness, timings and resource readings
+   must be observed separately. The existing 150-second request/300-second model
+   limits do not establish that 4K output can finish; review any time-budget
+   change explicitly before execution.
 4. For each approved operation, retain the exact model/runtime configuration,
    effective per-session context, actual prompt/output token counts, input and
    response evidence, resource/temperature readings, timings, task result and
@@ -53,8 +74,8 @@ The narrow host-brokered edit also does not establish general model tool calling
    budgets, truncate the prompt, substitute a model or reset a fault.
 
 Each live operation requires fresh, explicit, scoped approval. This decision
-approves documentation and future preparation only. Both current approvals are
-spent; none of the ten consumed model attempts may be reused. No automatic
+approves documentation and preparation only. All executed approvals are
+spent; none of the fifteen consumed model attempts may be reused. No automatic
 retry, restart or fault reset is authorized.
 
 ## Evidence needed to pass the 64K gate
@@ -80,7 +101,8 @@ of these properties. Hermes need not replace OpenCode or the supervisor.
 
 ## Existing controls remain in force
 
-Keep CPU emergency stop at 97 C and all other existing emergency stops, valid
+Keep CPU emergency stop at 97 C, the owner-directed 30-GiB host RAM crossing,
+and all other existing emergency stops, valid
 startup telemetry, independent watchdogs, leases, task/file/output limits,
 latched faults and evidence preservation. WSL remains one CPU / 6 GiB / no swap;
 the model container remains one CPU / 4 GiB unless a separate change is explicitly

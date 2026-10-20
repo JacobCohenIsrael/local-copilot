@@ -28,6 +28,7 @@ STARTUP_TARGET_CHANGE={'targets':'cpu-temperature,gpu-temperature,gpu-power,vram
     'from':'blocking-ten-second-target-baseline','to':'warnings-with-ten-second-valid-telemetry',
     'emergencyStops':'unchanged-from-eighth-attempt'}
 REQUEST_TIMING_CHANGE={'setting':'engine_silence_s','from':30,'to':75,'hardRequestDeadlineSeconds':90}
+INPUT_SCRIPTS={'api_wrapper.py':'api_wrapper.py','container_test.py':'container_test.py'}
 FILE_ACCESS_CHANGE={'statePublication':'immutable-sequenced-snapshots-no-replacement',
     'stateRead':'single-read-share-read-delete-not-write','maximumStateRecords':16,'maximumStateBytes':16384,
     'parentErrorDetails':'bounded-operation-message-errno-winerror-filenames-traceback',
@@ -199,7 +200,7 @@ def prepare(extra=None):
     source_tree=build.source_tree(plan)
     if source_tree!=old['sourceTree']:raise ValueError('PINNED_SOURCE_CHANGED')
     package=PACKAGES/uuid.uuid4().hex;inputs=package/'input';inputs.mkdir(parents=True)
-    for name in ('api_wrapper.py','container_test.py'):(inputs/name).write_bytes((HERE/name).read_bytes().replace(b'\r\n',b'\n'))
+    for name,source in INPUT_SCRIPTS.items():(inputs/name).write_bytes((HERE/source).read_bytes().replace(b'\r\n',b'\n'))
     build.tools.base.atomic(inputs/'strata.json',config())
     build.tools.base.atomic(inputs/'request.json',REQUEST)
     args,contract=launch(package,Path(proof['artifactDirectory']),Path(runtime['directory']),Path(plan['sourcePackage'])/'input/source')

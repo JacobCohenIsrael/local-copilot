@@ -22,6 +22,11 @@ import startup_handoff
 
 guard=plan.build.guard
 WATCH_ENTRYPOINT=Path(__file__).resolve()
+API_RESULT_BYTES=16384
+API_RESULT_RECORD_BYTES=20000
+READER_SAMPLES=480
+GPU_SAMPLE_LIMIT=512
+PULSE_BYTES=2048
 
 
 @dataclass(frozen=True)
@@ -111,20 +116,20 @@ def watch():
         'sessionId':claim['sessionId'],'reviewSha256':permit.review_sha256,'modelLaunchEnabled':True,
         'workerLaunchEnabled':False,'stopConfirmed':False,'cleanupComplete':False,'cpuReaderDirectory':request['readerDirectory']}
     feed=cpu_feed.Feed(Path(request['readerDirectory']),source_permit=permit)
-    gate=safety.Gate();started=time.monotonic();latest_gpu=None;next_gpu=next_guard=0;gpu_sequence=0
+    gate=safety.Gate();started=time.monotonic();latest_gpu=None;next_gpu=next_guard=next_resource=0;gpu_sequence=0
     startup=startup_handoff.Handoff(owned.container_id,permit.review_sha256)
     with guard.base.lock(plan.LIVE/'guard-lock'):
         if state_exists() or (plan.LIVE/'state.json').exists():raise ValueError('MODEL_WATCH_STATE_ALREADY_EXISTS')
         try:
-            owned.inspect(docker);feed.start_reader(samples=480)
+            owned.inspect(docker);feed.start_reader(samples=READER_SAMPLES)
             guard.base.atomic(directory/'reader-process.json',{'pid':feed.process.pid,'ownedByWatchdogPid':os.getpid()})
-            state_save(state);lease=control.Pulse(plan.LIVE/'control/controller.pulse',maximum=2048)
+            state_save(state);lease=control.Pulse(plan.LIVE/'control/controller.pulse',maximum=PULSE_BYTES)
             while state['phase'] not in ('FAULT','COMPLETE'):
                 now=time.monotonic()
-                if now-started>=410:fail(state,'SESSION_DEADLINE',docker,owned);break
+                if now-started>=safety.POLICY['outerSeconds']:fail(state,'SESSION_DEADLINE',docker,owned);break
                 if time.monotonic()>=next_gpu:
                     latest_gpu=safety.snapshot();next_gpu=time.monotonic()+1;gpu_sequence+=1
-                    if gpu_sequence>512:raise ValueError('GPU_SAMPLE_BUDGET')
+                    if gpu_sequence>GPU_SAMPLE_LIMIT:raise ValueError('GPU_SAMPLE_BUDGET')
                     guard.base.atomic(directory/f'gpu-{gpu_sequence:04d}.json',latest_gpu)
                 cpu=feed.poll()
                 if cpu is None and gate.last_cpu is None and now-started<=5:
@@ -138,6 +143,12 @@ def watch():
                     cpu=feed.poll()
                     if cpu is None:break
                     eligible=gate.observe(cpu,latest_gpu,now=time.monotonic(),unix=time.time(),controller_age=lease.age())
+                if safety.POLICY.get('resourceThresholdsWarningsOnly'):
+                    state['resourceObservations']=gate.resource_report()
+                    if time.monotonic()>=next_resource:
+                        guard.base.atomic(directory/'resource-trends.json',state['resourceObservations'])
+                        print('RESOURCE_WARNINGS '+json.dumps(state['resourceObservations']),flush=True)
+                        next_resource=time.monotonic()+5
                 if gate.fault:fail(state,gate.fault,docker,owned);break
                 if (plan.LIVE/'api.failure').exists():fail(state,'API_TEST_FAILED',docker,owned);break
                 previous=state['phase']
@@ -156,7 +167,7 @@ def watch():
                 # leases and every fault above still run on every iteration.
                 if pending:
                     if time.monotonic()>=next_guard:
-                        control.pulse(plan.LIVE/'control/guard.pulse',maximum=2048);next_guard=time.monotonic()+.5
+                        control.pulse(plan.LIVE/'control/guard.pulse',maximum=PULSE_BYTES);next_guard=time.monotonic()+.5
                     time.sleep(.1);continue
                 info=owned.inspect(guard.DeadlineDocker(docker,time.monotonic()+1,time.monotonic))
                 if info is None:fail(state,'MODEL_CONTAINER_MISSING',docker,owned);break
@@ -164,13 +175,13 @@ def watch():
                 if info['State']['Running']:
                     if previous=='WAITING_BASELINE':fail(state,'MODEL_STARTED_BEFORE_ADMISSION',docker,owned);break
                     if gate.model_started is None:
-                        # Count the 300-second host lifetime from before start,
+                        # Count the reviewed host lifetime from before start,
                         # never from a later successful status observation.
                         gate.model_started=startup.granted_at;state['phase']='RUNNING'
                 elif info['State'].get('Status')!='created':
                     saved=directory/'api-result.json'
                     if (plan.LIVE/'control/finish.request').exists() and saved.exists() and info['State']['ExitCode']==0:
-                        api=plan.read(saved,20000)
+                        api=plan.read(saved,API_RESULT_RECORD_BYTES)
                         if api.get('status')!='REAL_STRATA_API_ANSWER':raise ValueError('API_RESULT_NOT_SUCCESS')
                         validate_response(api['response']);state.update(stop(docker,owned))
                         state['phase']='COMPLETE' if state['stopConfirmed'] else 'FAULT'
@@ -183,7 +194,7 @@ def watch():
                     if state['phase']=='ARMED':startup.grant(time.monotonic())
                     state_save(state)
                 if time.monotonic()>=next_guard:
-                    control.pulse(plan.LIVE/'control/guard.pulse',maximum=2048);next_guard=time.monotonic()+.5
+                    control.pulse(plan.LIVE/'control/guard.pulse',maximum=PULSE_BYTES);next_guard=time.monotonic()+.5
                 time.sleep(.1)
         except BaseException as error:
             state['watchError']=error_record(error,'watch_status_or_start_handoff')
@@ -204,13 +215,13 @@ def watch():
 def read_result(docker,owned):
     try:
         raw=docker.call('exec','--user','65532:65532',owned.container_id,
-            '/usr/bin/head','-c','16385','/work/result.json',timeout=1.5)
+            '/usr/bin/head','-c',str(API_RESULT_BYTES+1),'/work/result.json',timeout=1.5)
     except subprocess.CalledProcessError as error:
         if 'No such file or directory' in (error.stderr or ''):return None
         info=owned.inspect(docker)
         if info is not None and not info['State']['Running']:return None
         raise
-    if len(raw.encode())>16384:raise ValueError('API_RESULT_BUDGET')
+    if len(raw.encode())>API_RESULT_BYTES:raise ValueError('API_RESULT_BUDGET')
     result=json.loads(raw)
     if not isinstance(result,dict):raise ValueError('API_RESULT_SHAPE')
     return result
@@ -245,19 +256,19 @@ def run():
             operation='inspect_created_container'
             info=owned.inspect(docker);guard.base.atomic(directory/'created-container.json',info)
             operation='initial_controller_pulse'
-            control.pulse(plan.LIVE/'control/controller.pulse',maximum=2048)
+            control.pulse(plan.LIVE/'control/controller.pulse',maximum=PULSE_BYTES)
             operation='start_watchdog'
             with (directory/'watch.log').open('xb') as output:
                 watchdog=subprocess.Popen([sys.executable,'-B','-E','-s',str(WATCH_ENTRYPOINT),'--watch'],
                     stdout=output,stderr=subprocess.STDOUT,creationflags=subprocess.CREATE_NO_WINDOW)
                 operation='publish_owned_processes'
                 guard.base.atomic(directory/'host-processes.json',{'parentPid':os.getpid(),'watchdogPid':watchdog.pid})
-                lease=control.Pulse(plan.LIVE/'control/guard.pulse',maximum=2048)
-                end=time.monotonic()+410;started=False;next_pulse=next_result=0;claimed_result=False
+                lease=control.Pulse(plan.LIVE/'control/guard.pulse',maximum=PULSE_BYTES)
+                end=time.monotonic()+safety.POLICY['outerSeconds'];started=False;next_pulse=next_result=0;claimed_result=False
                 while time.monotonic()<end:
                     now=time.monotonic()
                     operation='controller_pulse'
-                    if now>=next_pulse:control.pulse(plan.LIVE/'control/controller.pulse',maximum=2048);next_pulse=now+.5
+                    if now>=next_pulse:control.pulse(plan.LIVE/'control/controller.pulse',maximum=PULSE_BYTES);next_pulse=now+.5
                     operation='read_watch_state'
                     state=read_state() if state_exists() else None
                     operation='poll_watchdog'
@@ -317,7 +328,7 @@ def run():
         if (state['phase']!='COMPLETE' or state.get('stopConfirmed') is not True or
                 (plan.LIVE/'emergency.json').exists() or watchdog is None or watchdog.returncode!=0):
             raise ValueError('MODEL_API_FAILED_OR_STOP_UNCONFIRMED')
-        response=plan.read(directory/'api-result.json',20000)['response']
+        response=plan.read(directory/'api-result.json',API_RESULT_RECORD_BYTES)['response']
         return {**state,'apiResultFile':str(directory/'api-result.json'),
             'answer':response['choices'][0]['message']['content'],'usage':response['usage']}
 

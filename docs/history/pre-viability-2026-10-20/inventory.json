@@ -1,0 +1,54 @@
+{
+  "AGENTS.md": {
+    "bytes": 9404,
+    "sha256": "2b2f93025c400295d303bfc3b8dd50a62befcd37719501841c37b97abe9512f3"
+  },
+  "AGENT.md": {
+    "bytes": 222,
+    "sha256": "3b9bcd969ff86292a864fa2357baed3925b17d2562990b29438a5010f7c30c2f"
+  },
+  "NEXT_STEPS.md": {
+    "bytes": 50473,
+    "sha256": "faa840205f9563d06975b3196c5cad1e0038cc7f1be7e913a316db1530300cca"
+  },
+  "README.md": {
+    "bytes": 6629,
+    "sha256": "e22f83eadce2156c03dc60f0d7960e908608907919d1dab75c5a4e51661329ac"
+  },
+  "MVP.md": {
+    "bytes": 4674,
+    "sha256": "e6dd9565b71c80300aa286313531180cadea0d043dc24fb4c18eedfecdbd9930"
+  },
+  "docs/HANDOFF-2026-10-19.md": {
+    "bytes": 7162,
+    "sha256": "5a6812567bcf79f23116cc71483a7df31ad20b14841638bda91896ca364db385"
+  },
+  "STRATA_CONTAINER_PLAN.md": {
+    "bytes": 14123,
+    "sha256": "59c927bb66555616433fcd6082d0f8621c03c4d56a3cc437a85c7462e082d656"
+  },
+  "containers/model-runtime/README.md": {
+    "bytes": 5837,
+    "sha256": "7042986ca27261b26f7576ad26cfacb531dac4a2667281cfb60976a29a75c2b8"
+  },
+  "containers/model-runtime/HERMES_CONTEXT_PLAN.md": {
+    "bytes": 6708,
+    "sha256": "b450dfa22296f73e22d46db02117dfd29159ea0192b717abe7f0e84c9a8e9817"
+  },
+  "containers/model-runtime/CONTEXT_CAPACITY_PREPARATION.md": {
+    "bytes": 4903,
+    "sha256": "3d3da45f404c52d5afbe0e6bf3888037ad3791824fa27bf09e6b779e8fb4300e"
+  },
+  "containers/worker/README.md": {
+    "bytes": 7121,
+    "sha256": "2e97acb29f51c608740373487ce2d21d13fcf059aa5a38b516e4171c553592bb"
+  },
+  "containers/safety/README.md": {
+    "bytes": 5777,
+    "sha256": "51af949b743c4c35a188d9a3057a5876d68727e1d35fc45af1d1ead7b7b31b4e"
+  },
+  "containers/strata-proposal/README.md": {
+    "bytes": 42572,
+    "sha256": "f94e1db3b5be43c7f97afbe693ccfb1cc0da98bb0c5c9af6adbf8f48bc4f41bc"
+  }
+}

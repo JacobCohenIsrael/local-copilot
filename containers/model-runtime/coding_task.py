@@ -14,6 +14,7 @@ HERE=Path(__file__).resolve().parent
 REPO=HERE.parents[1]
 ROOT=REPO/'.runtime/strata-coding-1-review'
 WORKER=REPO/'.runtime/strata-coding-1-worker'
+WORKER_NAME='copilot-strata-coding-1-worker-'
 NINTH=REPO/'.runtime/model-api-startup-warnings-review/9213527ebc1861f5ee83004a9a1393c1b9903d3184fba118453c023efd48cad9'
 MANIFEST='129e6a88fe24f9ffab058b7cedea6963989f2959457e43db3e9acbc91783b83a'
 REQUEST={**container_test.REQUEST,'messages':[{'role':'user','content':'Set VALUE to 2. Return only the updated code:\nVALUE = 1\n'}],'max_tokens':32}
@@ -118,7 +119,7 @@ def prepare():
     return {'reviewSha256':p.sha(packet),'reviewFile':str(folder/'review.json')}
 
 def worker_args(task):
-    name='copilot-strata-coding-1-worker-'+Path(task['workerInput']).parent.name
+    name=WORKER_NAME+Path(task['workerInput']).parent.name
     source=Path(task['workerInput']);control=WORKER/'control'
     args=['create','--name',name,'--label','local-copilot.kind=opencode-live-strata-edit','--pull=never',
         '--platform','linux/amd64','--runtime','runc','--network','none','--cpus','0.5','--memory','512m',
@@ -150,6 +151,7 @@ def run():
     activate()
     if WORKER.exists():raise ValueError('CODING_WORKER_ATTEMPT_CONSUMED')
     permit=p.authorize();task=permit.packet['codingTask'];check_task(task)
+    selected=task.get('selectedFile','example.py')
     control=WORKER/'control';control.mkdir(parents=True)
     save(WORKER/'attempt.json',{'reviewSha256':permit.review_sha256})
     docker=first_api.guard.base.Docker();cid=None;done=threading.Event();thread_fault=[]
@@ -195,14 +197,15 @@ def run():
         save(WORKER/'worker-result.json',worker)
         if (worker['status']!='REAL_STRATA_CODE_APPLIED' or worker.get('modelRequests')!=1 or
                 worker['answerUsed']['responseSha256']!=p.sha(api['response']) or
-                base64.b64decode(worker['outputFiles']['example.py'],validate=True)!=generated):
+                set(worker['outputFiles'])!={selected} or
+                base64.b64decode(worker['outputFiles'][selected],validate=True)!=generated):
             raise ValueError('REAL_CODE_LINEAGE_OR_EDIT_FAILED')
         (control/'finish.worker').touch(exist_ok=False)
         exit_code=int(docker.call('wait',cid,timeout=5).strip())
         if exit_code!=0 or thread_fault:raise ValueError('WORKER_EXIT_OR_MONITOR_FAILED')
         validate_worker(docker.inspect(cid),task)
-        collected=bundle_rehearsal.import_output(task['bundleRunId'],worker['outputFiles'])
-        if collected['changedFiles']!=['example.py']:raise ValueError('EXPECTED_SINGLE_FILE_PATCH')
+        collected=bundle_rehearsal.import_output(task['bundleRunId'],worker['outputFiles'],selected)
+        if collected['changedFiles']!=[selected]:raise ValueError('EXPECTED_SINGLE_FILE_PATCH')
         result.update(status='REAL_STRATA_CODING_PATCH_FOR_REVIEW',patch=collected['patch'],collected=collected,
             modelResponseSha256=p.sha(api['response']),workerResult=worker,appliedToOriginal=False)
     except BaseException as error:
@@ -223,6 +226,14 @@ def run():
         done.set()
         result['originalUnchanged']=all(p.build.tools.sha(original/name)==digest for name,digest in fingerprints.items())
         if not result['originalUnchanged']:result.update(status='FAULT',patch=None,error='ORIGINAL_CHANGED')
+        if 'repositoryFile' in task:
+            try:
+                repository_file=REPO/str(task_bundle.safe_path(task['repositoryFile']))
+                task_bundle.plain(repository_file)
+                unchanged=p.build.tools.sha(repository_file)==task['sourceSha256']
+            except (OSError,ValueError):unchanged=False
+            result['repositoryOriginalUnchanged']=unchanged
+            if not unchanged:result.update(status='FAULT',patch=None,error='REPOSITORY_ORIGINAL_CHANGED')
         save(WORKER/'integration-result.json',result)
     return result
 

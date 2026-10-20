@@ -1,5 +1,6 @@
 """Runtime-only safety proposal and deterministic gate; no implicit policy activation."""
 import math
+from collections import deque
 from pathlib import Path
 import subprocess
 import sys
@@ -24,6 +25,18 @@ POLICY = {'cpuStartC':94, 'cpuStopC':97, 'startupTargetsWarningsOnly':True, 'bas
 def finite(value):return type(value) in (int,float) and math.isfinite(value)
 
 
+def viability_policy(base=None):
+    """Owner-approved advisory resources for NEW coding scopes, never old approvals.
+
+    Deadlines/envelopes are inherited; the caller must bind this complete policy
+    into its fresh review and activate it in both controller and watchdog.
+    """
+    return {**(POLICY if base is None else base),
+        'resourceThresholdsWarningsOnly':True, 'resourceTrendSeconds':30,
+        'cpuStartC':94, 'gpuStartC':87, 'ramStopMiB':30720,
+        'cpuStopC':97, 'gpuStopC':90}
+
+
 def decode_gpu(raw):
     if len(raw)>2*1024**2:raise ValueError('GPU_RESPONSE_BUDGET')
     root=ET.fromstring(raw);gpu=root.find('gpu')
@@ -44,9 +57,50 @@ def snapshot(*,capture=subprocess.run,clock=time.monotonic,unix=time.time):
 
 
 class Gate:
-    def __init__(self):
+    def __init__(self,policy=None):
+        self.policy=POLICY if policy is None else dict(policy)
         self.fault=None;self.cool_since=None;self.last_sequence=0;self.startup_warnings={}
         self.last_cpu=None;self.cpu_received=None;self.last_tick=None;self.model_started=None;self.last_unix=None
+        self.resource_trends={};self.resource_warnings={};self._resource_samples={};self._resource_started={}
+
+    def resources(self,cpu,gpu,now):
+        """Bounded 30-second observations; no resource trend can renew a deadline."""
+        channels=(('cpuTemperatureC',cpu,self.policy['cpuStartC']),
+            ('gpuTemperatureC',gpu,self.policy['gpuStartC']),
+            ('gpuPowerW',gpu,self.policy['gpuStopPowerW']),
+            ('vramUsedMiB',gpu,self.policy['gpuStopVramMiB']),
+            ('ramUsedMiB',gpu,self.policy['ramStopMiB']))
+        window=self.policy.get('resourceTrendSeconds',30)
+        for name,sample,threshold in channels:
+            history=self._resource_samples.setdefault(name,deque(maxlen=512))
+            self._resource_started.setdefault(name,now)
+            stamp=sample['recordedAtUnix'];value=sample[name]
+            # The monitor reuses GPU frames while draining CPU frames.
+            if not history or history[-1][2]!=stamp:
+                history.append((now,value,stamp))
+            while history and now-history[0][0]>window:history.popleft()
+            values=[x[1] for x in history];span=history[-1][0]-history[0][0]
+            delta=values[-1]-values[0]
+            self.resource_trends[name]={'current':value,'minimum':min(values),'maximum':max(values),
+                'mean':sum(values)/len(values),'delta':delta,'spanSeconds':span,
+                'windowSeconds':window,'windowComplete':now-self._resource_started[name]>=window,
+                'samples':len(values),'threshold':threshold,'aboveOrAtThreshold':value>=threshold,
+                'direction':'rising' if delta>0 else 'falling' if delta<0 else 'steady'}
+            if value>=threshold:
+                previous=self.resource_warnings.get(name,{})
+                self.resource_warnings[name]={'threshold':threshold,
+                    'peak':max(value,previous.get('peak',value)),
+                    'firstAtUnix':previous.get('firstAtUnix',stamp),'lastAtUnix':stamp,'fault':False}
+        for name,sample in (('cpuThermalThrottling',cpu),('gpuThermalThrottling',gpu)):
+            if sample.get(name) is True:
+                self.resource_warnings[name]={'active':True,'lastAtUnix':sample['recordedAtUnix'],'fault':False}
+            elif name in self.resource_warnings:
+                self.resource_warnings[name]={**self.resource_warnings[name],'active':False}
+
+    def resource_report(self):
+        return {'mode':'warnings-only','windowSeconds':self.policy.get('resourceTrendSeconds',30),
+            'trends':dict(self.resource_trends),'warnings':dict(self.resource_warnings),
+            'deadlinesRenewed':False}
 
     def trip(self,reason):self.fault=self.fault or reason;return False
 
@@ -82,28 +136,31 @@ class Gate:
         if gpu.get('gpuUuid')!=GPU_UUID or gpu.get('vramTotalMiB')<16000:return self.trip('GPU_IDENTITY_CHANGED')
         if not 0<gpu['gpuTemperatureC']<=125 or gpu['vramUsedMiB']>gpu['vramTotalMiB'] or gpu['ramUsedMiB']>gpu['ramTotalMiB']:
             return self.trip('GPU_OR_HOST_CHANNEL_INVALID')
-        if cpu.get('cpuThermalThrottling') not in (None,False) or type(cpu.get('cpuThermalThrottling')) not in (type(None),bool):
+        advisory=self.policy.get('resourceThresholdsWarningsOnly',False)
+        if type(cpu.get('cpuThermalThrottling')) not in (type(None),bool) or (not advisory and cpu.get('cpuThermalThrottling') is True):
             return self.trip('CPU_THROTTLE_FLAG')
-        if gpu.get('gpuThermalThrottling') is not False:return self.trip('GPU_THROTTLE_MISSING_OR_ACTIVE')
+        if type(gpu.get('gpuThermalThrottling')) is not bool or (not advisory and gpu['gpuThermalThrottling']):return self.trip('GPU_THROTTLE_MISSING_OR_ACTIVE')
         if gpu.get('acConnected') is not True:return self.trip('AC_DISCONNECTED_OR_UNKNOWN')
-        if cpu['cpuTemperatureC']>=POLICY['cpuStopC']:return self.trip('CPU_HOT')
-        if gpu['gpuTemperatureC']>=75:return self.trip('GPU_HOT')
-        if gpu['gpuPowerW']>=100:return self.trip('GPU_POWER_HIGH')
-        if gpu['vramUsedMiB']>=14336:return self.trip('VRAM_HIGH')
-        if gpu['ramUsedMiB']>=28672:return self.trip('HOST_RAM_HIGH')
+        if advisory:self.resources(cpu,gpu,now)
+        else:
+            if cpu['cpuTemperatureC']>=self.policy['cpuStopC']:return self.trip('CPU_HOT')
+            if gpu['gpuTemperatureC']>=self.policy['gpuStopC']:return self.trip('GPU_HOT')
+            if gpu['gpuPowerW']>=self.policy['gpuStopPowerW']:return self.trip('GPU_POWER_HIGH')
+            if gpu['vramUsedMiB']>=self.policy['gpuStopVramMiB']:return self.trip('VRAM_HIGH')
+            if gpu['ramUsedMiB']>=self.policy['ramStopMiB']:return self.trip('HOST_RAM_HIGH')
         if self.model_started is not None:
-            if now-self.model_started>=300:return self.trip('MODEL_DEADLINE')
+            if now-self.model_started>=self.policy['modelSeconds']:return self.trip('MODEL_DEADLINE')
             return True
-        if not finite(cpu.get('readerRemainingSeconds')) or cpu['readerRemainingSeconds']<305:
+        if not finite(cpu.get('readerRemainingSeconds')) or cpu['readerRemainingSeconds']<self.policy['modelSeconds']+self.policy['stopSeconds']:
             return self.trip('CPU_READER_COVERAGE')
         # Startup targets are advisory. Require ten seconds of valid, monitored
         # samples, without restarting that window when a target is exceeded.
         for channel,value,target,minimum in (
-                ('cpuTemperatureC',cpu['cpuTemperatureC'],POLICY['cpuStartC'],False),
-                ('gpuTemperatureC',gpu['gpuTemperatureC'],POLICY['gpuStartC'],False),
-                ('gpuPowerW',gpu['gpuPowerW'],POLICY['gpuStartPowerW'],False),
-                ('vramUsedMiB',gpu['vramUsedMiB'],POLICY['gpuStartVramMiB'],False),
-                ('hostFreeRamMiB',gpu['ramTotalMiB']-gpu['ramUsedMiB'],POLICY['hostFreeRamStartMiB'],True)):
+                ('cpuTemperatureC',cpu['cpuTemperatureC'],self.policy['cpuStartC'],False),
+                ('gpuTemperatureC',gpu['gpuTemperatureC'],self.policy['gpuStartC'],False),
+                ('gpuPowerW',gpu['gpuPowerW'],self.policy['gpuStartPowerW'],False),
+                ('vramUsedMiB',gpu['vramUsedMiB'],self.policy['gpuStartVramMiB'],False),
+                ('hostFreeRamMiB',gpu['ramTotalMiB']-gpu['ramUsedMiB'],self.policy['hostFreeRamStartMiB'],True)):
             if value<target if minimum else value>target:
                 old=self.startup_warnings.get(channel)
                 worst=value if old is None else (min if minimum else max)(old['observed'],value)

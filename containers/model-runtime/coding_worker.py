@@ -6,6 +6,12 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 MAX_REQUEST=65536
 MODEL='qwen3.8-flash-next-coder-iq1_m'
 TASK='Only change example.py from VALUE = 1 to VALUE = 2. Do not run commands or access other files.'
+SELECTED='example.py'
+STDOUT_LIMIT=16384
+STDERR_LIMIT=8192
+
+def validate_original(data):
+    if data!=b'VALUE = 1\n':raise ValueError('FIXED_SELECTED_FILE_REQUIRED')
 
 def code_from_response(response):
     text=response['choices'][0]['message']['content'].strip()
@@ -26,9 +32,9 @@ def code_from_response(response):
 
 async def run():
     bridge=Path('/bridge');work=Path('/tmp/workspace');work.mkdir()
-    original=Path('/input/example.py').read_bytes()
-    if original!=b'VALUE = 1\n':raise ValueError('FIXED_SELECTED_FILE_REQUIRED')
-    (work/'example.py').write_bytes(original)
+    original=Path('/input',SELECTED).read_bytes()
+    validate_original(original)
+    (work/SELECTED).write_bytes(original)
     started=time.monotonic();closed=threading.Event();process=[None];requests=[];answer_used=[]
     def terminate():
         child=process[0]
@@ -72,12 +78,12 @@ async def run():
                     answer_used.append({'responseSha256':record['responseSha256'],
                         'codeSha256':hashlib.sha256(code).hexdigest(),'code':base64.b64encode(code).decode()})
                     delta={'role':'assistant','tool_calls':[{'index':0,'id':'live-strata-edit-1','type':'function',
-                        'function':{'name':'edit','arguments':json.dumps({'path':'/tmp/workspace/example.py',
+                        'function':{'name':'edit','arguments':json.dumps({'path':str(work/SELECTED),
                             'oldString':original.decode(),'newString':code.decode()})}}]}
                     finish='tool_calls'
                 else:
                     feedback=[m for m in req.get('messages',[]) if m.get('role')=='tool']
-                    if not feedback or (work/'example.py').read_bytes()!=base64.b64decode(answer_used[0]['code']):
+                    if not feedback or (work/SELECTED).read_bytes()!=base64.b64decode(answer_used[0]['code']):
                         raise ValueError('REAL_EDIT_NOT_APPLIED')
                     delta={'role':'assistant','content':'Applied the Strata-generated replacement.'};finish='stop'
                 self.send_response(200);self.send_header('Content-Type','text/event-stream')
@@ -93,7 +99,7 @@ async def run():
                 except OSError:pass
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
     threading.Thread(target=server.serve_forever,daemon=True).start()
-    rules={'*':'deny','read':{'*':'deny','example.py':'allow'},'edit':{'*':'deny','example.py':'allow'},
+    rules={'*':'deny','read':{'*':'deny',SELECTED:'allow'},'edit':{'*':'deny',SELECTED:'allow'},
         'external_directory':'deny'}
     config={'model':'strata/'+MODEL,'small_model':'strata/'+MODEL,'enabled_providers':['strata'],
         'autoupdate':False,'share':'disabled','snapshot':False,'formatter':False,'lsp':False,'plugin':[],
@@ -124,14 +130,14 @@ async def run():
                 total+=len(value)
                 if total>maximum:raise ValueError('OPENCODE_OUTPUT_BUDGET')
                 chunks.append(value)
-        stdout,stderr,_=await asyncio.wait_for(asyncio.gather(read_bound(child.stdout,16384),
-            read_bound(child.stderr,8192),child.wait()),400)
+        stdout,stderr,_=await asyncio.wait_for(asyncio.gather(read_bound(child.stdout,STDOUT_LIMIT),
+            read_bound(child.stderr,STDERR_LIMIT),child.wait()),400)
         generated=base64.b64decode(answer_used[0]['code']) if len(answer_used)==1 else None
-        actual=(work/'example.py').read_bytes()
+        actual=(work/SELECTED).read_bytes()
         if child.returncode!=0 or len(requests)!=2 or actual!=generated or (Path('/tmp/adapter-error.json').exists()):
             raise ValueError('OPENCODE_EDIT_FAILED')
         result.update(status='REAL_STRATA_CODE_APPLIED',exitCode=child.returncode,requests=len(requests),
-            modelRequests=1,answerUsed=answer_used[0],outputFiles={'example.py':base64.b64encode(actual).decode()},
+            modelRequests=1,answerUsed=answer_used[0],outputFiles={SELECTED:base64.b64encode(actual).decode()},
             stdout=stdout.decode(errors='replace').replace(token,'[redacted]'),
             stderr=stderr.decode(errors='replace').replace(token,'[redacted]'))
     except BaseException as error:

@@ -1,7 +1,10 @@
 # Local Copilot
 
-**Current checkpoint (19 October):** Strata returned a real **READY** answer in Docker, then completed a [real Codex/OpenCode coding test](containers/model-runtime/CODING_TASK_1_RESULT.md): `VALUE = 1` -> `VALUE = 2`, with a 113-byte returned patch. Both containers exited successfully and stopped; originals stayed unchanged. Startup targets are warnings, emergency stops remain enforced. This is a narrow one-file adapter; general interactive coding remains future work. Both approvals are spent.
-
+**Current checkpoint (20 October):** one [30-minute coding viability test](VIABILITY_POC.md)
+is next: Strata fixes the real negative-read-limit bug and adds regression tests;
+OpenCode returns a patch without Codex repairs. Resource readings warn with rolling
+trends rather than stopping this new scope. The READY/toy pilot is completed;
+useful delegation and paid-token savings are still unproven.
 
 This project is focused on using **Strata for local coding work** in two ways:
 
@@ -38,36 +41,20 @@ context and returned output focused is part of the intended token savings.
 
 ## Current implementation focus
 
-The immediate milestone is **one real Strata coding task completed end to end**.
-The active implementation targets Strata inside Docker on Windows, with cloud
-Codex as the first parent-agent integration and Claude support planned later.
-Direct local use is also a project goal; it is not yet a completed standalone
-coding-agent workflow.
+Follow [the viability contract](VIABILITY_POC.md): at most ten minutes handoff
+preparation, fifteen minutes execution including confirmed stopping, five minutes
+validation/report. One request, no retry, no repair by Codex. On failure recommend
+stopping investment in this Docker approach. No more Fibonacci/context tests.
 
-Done:
+The owner approved warnings for resource pressure, including sustained crossings.
+An explicit new-scope profile implements this; old strict defaults and historical
+approvals remain preserved. This offline policy update is not live execution.
 
-- Linux Strata built in Docker; executable/library exported and hash-verified.
-- Real model answer returned through the Docker API with confirmed shutdown.
-- Codex submitted one disposable file task. OpenCode made a real provider request,
-  Strata generated replacement code, and the adapter supplied that exact text to
-  OpenCode's edit tool. A 113-byte patch returned to Codex; originals were unchanged.
-- Both containers exited 0 and stopped. Existing emergency limits, monitoring,
-  leases and preservation remained enforced; startup targets became warnings.
-- 81 offline runtime/integration checks passed, separately from real execution.
-
-Left:
-
-- Generalize the narrow one-file code-to-edit adapter to a useful selected task.
-- Verify native model tool-calling/full interactive provider compatibility before
-  claiming a general OpenCode coding agent.
-- Evaluate code quality and usefulness on real tasks before tuning performance.
-- Establish usable context capacity incrementally toward 64K before considering
-  Hermes Agent as an optional coordination layer. Each live increase needs fresh
-  scoped approval; see the [Hermes context plan](containers/model-runtime/HERMES_CONTEXT_PLAN.md).
-
-See [the completed pilot](containers/model-runtime/CODING_TASK_1_RESULT.md),
-[the milestone](MVP.md) and [the checkpoint](NEXT_STEPS.md). No further live run
-is authorized by these results; consumed attempts and evidence remain preserved.
+The existing build, real READY answer and tiny returned patch are groundwork.
+Nineteen model attempts are consumed. General coding quality, native tool calling
+and token savings remain unproven; record costs honestly. Hermes/64K, tuning,
+MCP, UI and rebuilds are deferred. See [AGENTS.md](AGENTS.md) and
+[NEXT_STEPS.md](NEXT_STEPS.md) for current handover instructions.
 
 ## Operating principles
 
@@ -85,12 +72,12 @@ is authorized by these results; consumed attempts and evidence remain preserved.
 | Location | Purpose |
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Compact agent guidance and current checkpoint |
-| [MVP.md](MVP.md) | Immediate path to the first real Strata answer and coding patch |
-| [NEXT_STEPS.md](NEXT_STEPS.md) | Current checkpoint, blockers and preserved execution history |
+| [MVP.md](MVP.md) | Current useful coding viability milestone |
+| [NEXT_STEPS.md](NEXT_STEPS.md) | Current checkpoint and bounded next action |
 | [local_worker.py](local_worker.py) | Supervisor CLI for status, preparation, rehearsals and guarded operations |
 | [containers/worker/](containers/worker/README.md) | Selected-file task boundary, OpenCode integration and patch collection |
 | [containers/strata-proposal/](containers/strata-proposal/README.md) | Pinned Linux Strata build and runtime preparation |
-| [containers/model-runtime/](containers/model-runtime/README.md) | First real model/API test and its exact approval scope |
+| [containers/model-runtime/](containers/model-runtime/README.md) | Runtime guards, advisory viability profile and historical evidence |
 | [containers/lifecycle/](containers/lifecycle/README.md) | Container lifecycle harness and shutdown validation |
 | [containers/safety/](containers/safety/README.md) | Existing monitoring, watchdog and execution-control evidence |
 | [STRATA_CONTAINER_PLAN.md](STRATA_CONTAINER_PLAN.md) | Container architecture findings and earlier planning context |

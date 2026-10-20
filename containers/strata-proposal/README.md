@@ -1,3 +1,9 @@
+> Current direction (20 October): follow [VIABILITY_POC.md](../../VIABILITY_POC.md). One real
+> coding task within 30 minutes; new coding scopes use resource warnings/trends.
+> The notes below describe historical or deferred work, not next-step instructions.
+> Their strict thresholds, pending approvals and context ladders do not override
+> the current contract. Preserve historical evidence and CPU-build policies.
+
 # Pinned Linux Strata build proposal
 
 **Current checkpoint (18 October):** [the CPU-only build completed](CPU_BUILD_TIMING_RESULT.md): all 153 steps passed, artifacts are hash-verified, and owned shutdown is confirmed. The [first real model/API test](../model-runtime/FIRST_API_REVIEW.md) is prepared for approval with unchanged CPU/RAM caps and explicit runtime controls; 386 offline tests pass. Previous evidence/configurations are preserved. Model/GPU execution remains disabled. Earlier checkpoints below are historical.

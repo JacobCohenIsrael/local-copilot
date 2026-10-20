@@ -1,3 +1,9 @@
+> Current direction (20 October): follow [VIABILITY_POC.md](../../VIABILITY_POC.md). One real
+> coding task within 30 minutes; new coding scopes use resource warnings/trends.
+> The notes below describe historical or deferred work, not next-step instructions.
+> Their strict thresholds, pending approvals and context ladders do not override
+> the current contract. Preserve historical evidence and CPU-build policies.
+
 # Bounded coding-task intake — offline only
 
 The [request-gate milestone](REQUEST_GATE.md) adds offline call/token/time

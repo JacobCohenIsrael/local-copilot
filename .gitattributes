@@ -1,0 +1,7 @@
+# These files are pinned by exact LF byte hashes in preserved evidence.
+containers/strata-proposal/cpu_reader.ps1 text eol=lf
+containers/strata-proposal/cpu_build_reader.ps1 text eol=lf
+containers/strata-proposal/image-stage-approval.json text eol=lf
+containers/strata-proposal/image-stage-recovery-approval.json text eol=lf
+containers/strata-proposal/image-verification-approval.json text eol=lf
+containers/strata-proposal/image-verification-recovery-approval.json text eol=lf
